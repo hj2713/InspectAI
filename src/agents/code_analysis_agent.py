@@ -9,6 +9,8 @@ class CodeAnalysisAgent(BaseAgent):
         """Initialize code analysis LLM client."""
         cfg = self.config or {}
         use_local = cfg.get("use_local", False)
+        provider = cfg.get("provider", "openai")
+
         if use_local:
             try:
                 from ..llm.local_client import LocalLLMClient as LLMClient
@@ -19,9 +21,9 @@ class CodeAnalysisAgent(BaseAgent):
                 print("Warning: failed to initialize local LLM client:", e)
                 print("Falling back to OpenAI client.")
 
-        # fallback to OpenAI
+        # fallback to OpenAI or configured provider
         from ..llm.client import LLMClient
-        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.2), default_max_tokens=cfg.get("max_tokens", 1024))
+        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.2), default_max_tokens=cfg.get("max_tokens", 1024), provider=provider)
 
     def process(self, code: str) -> Dict[str, Any]:
         """

@@ -14,7 +14,27 @@ def main():
     load_dotenv()
 
     # Initialize orchestrator with default config
-    orchestrator = OrchestratorAgent(ORCHESTRATOR_CONFIG)
+    import copy
+    config = copy.deepcopy(ORCHESTRATOR_CONFIG)
+
+    print("Select API Provider:")
+    print("1. OpenAI (Production)")
+    print("2. Bytez (Testing)")
+    choice = input("Enter choice (1/2): ").strip()
+
+    provider = "openai"
+    if choice == "2":
+        provider = "bytez"
+        print("Using Bytez API (Testing Mode)")
+    else:
+        print("Using OpenAI API (Production Mode)")
+
+    # Update config with provider
+    for key in config:
+        if isinstance(config[key], dict):
+            config[key]["provider"] = provider
+
+    orchestrator = OrchestratorAgent(config)
 
     # Example task: code improvement
     task = {

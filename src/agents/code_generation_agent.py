@@ -2,17 +2,26 @@
 from typing import Any, Dict, List
 
 from .base_agent import BaseAgent
-try:
-    from ..llm.local_client import LocalLLMClient as LLMClient
-except ImportError:
-    from ..llm.client import LLMClient  # Fallback to OpenAI if local fails
+
 import re
 
 
 class CodeGenerationAgent(BaseAgent):
     def initialize(self) -> None:
         cfg = self.config or {}
-        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.3), default_max_tokens=cfg.get("max_tokens", 1024))
+        use_local = cfg.get("use_local", False)
+        provider = cfg.get("provider", "openai")
+
+        if use_local:
+            try:
+                from ..llm.local_client import LocalLLMClient as LLMClient
+                self.client = LLMClient(default_temperature=cfg.get("temperature", 0.3), default_max_tokens=cfg.get("max_tokens", 1024))
+                return
+            except ImportError:
+                pass # Fallback
+
+        from ..llm.client import LLMClient
+        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.3), default_max_tokens=cfg.get("max_tokens", 1024), provider=provider)
 
     def process(self, specification: Dict[str, Any]) -> Dict[str, Any]:
         """
