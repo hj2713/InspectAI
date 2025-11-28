@@ -3,6 +3,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![LangGraph](https://img.shields.io/badge/LangGraph-Workflow-green.svg)](https://langchain-ai.github.io/langgraph/)
+[![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7.svg)](https://render.com)
 
 A production-grade multi-agent system powered by **12 specialized AI agents** for automated code review, bug detection, and security analysis. Inspired by [Ellipsis.dev](https://www.ellipsis.dev/blog/how-we-built-ellipsis), featuring a multi-stage pipeline with filtering, parallel execution, and LangGraph workflow orchestration.
 
@@ -15,10 +16,10 @@ A production-grade multi-agent system powered by **12 specialized AI agents** fo
 - **Filter Pipeline**: Deduplication, confidence filtering, and hallucination detection
 - **LangGraph Workflows**: Stateful orchestration with automatic error recovery
 - **Parallel Execution**: 4x faster via ThreadPoolExecutor
-- **GitHub Integration**: Automated PR reviews with inline comments
-- **Multiple LLM Support**: Qwen (local), OpenAI, Bytez
+- **GitHub Integration**: Automated PR reviews with inline comments via GitHub App
+- **Multiple LLM Support**: Google Gemini (default), OpenAI, Bytez
 - **Web File Support**: Analyzes HTML, CSS, JSON, XML, and shell scripts
-- **Production Ready**: Confidence scoring, evidence-based findings, graceful degradation
+- **Production Ready**: Deployed on Render with 24/7 availability
 
 ---
 
@@ -98,13 +99,21 @@ pip install -r requirements.txt
 
 2. **Configure LLM Provider** (choose one):
 
-   **Option A: Qwen (Local/Bytez) - For Testing**
+   **Option A: Google Gemini (Default - Recommended)**
+
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+
+   Get your API key from [Google AI Studio](https://aistudio.google.com/apikey)
+
+   **Option B: Bytez**
 
    ```env
    BYTEZ_API_KEY=your_bytez_key_here
    ```
 
-   **Option B: OpenAI - For Production**
+   **Option C: OpenAI**
 
    ```env
    OPENAI_API_KEY=sk-your-openai-key
@@ -113,33 +122,22 @@ pip install -r requirements.txt
 3. **Update `config/default_config.py`:**
 
    ```python
-   # For Bytez (testing/production)
-   DEFAULT_PROVIDER = "bytez"
-   BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Change model here for entire project
+   # For Gemini (default - recommended)
+   DEFAULT_PROVIDER = "gemini"
+   GEMINI_MODEL = "gemini-2.0-flash"  # Fast and capable
 
-   # For OpenAI (production)
+   # For Bytez
+   DEFAULT_PROVIDER = "bytez"
+   BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"
+
+   # For OpenAI
    DEFAULT_PROVIDER = "openai"
+   OPENAI_MODEL = "gpt-4"
    ```
 
 ### Usage
 
-#### 1. Command Line Interface
-
-```bash
-# Full review (all 12 agents)
-python -m src.cli review path/to/code.py --type full_review
-
-# Bug detection only
-python -m src.cli review path/to/code.py --type bug_fix
-
-# Security audit only
-python -m src.cli review path/to/code.py --type security_audit
-
-# Code improvement (code review only)
-python -m src.cli review path/to/code.py --type code_improvement
-```
-
-#### 2. LangGraph Workflow (Recommended)
+#### 1. LangGraph Workflow (Recommended)
 
 ```python
 from src.langgraph_workflows import run_code_review
@@ -163,7 +161,7 @@ for finding in result['filtered_findings']:
     print(f"  Confidence: {finding['confidence']:.0%}")
 ```
 
-#### 3. GitHub PR Review
+#### 2. GitHub PR Review
 
 ```python
 from src.orchestrator.orchestrator import OrchestratorAgent
@@ -183,7 +181,7 @@ task = {
 result = orchestrator.process_task(task)
 ```
 
-#### 4. Python API
+#### 3. Python API
 
 ```python
 from src.agents.code_analysis_agent import CodeAnalysisAgent
@@ -236,13 +234,11 @@ InspectAI/
 │   ├── github/                     # GitHub integration
 │   │   └── client.py               # GitHub API client
 │   ├── llm/                        # LLM providers
-│   │   ├── client.py               # OpenAI/Bytez client
-│   │   ├── local_client.py         # Local HuggingFace client
-│   │   └── factory.py              # LLM Factory pattern
+│   │   ├── client.py               # Unified LLM client (Gemini, OpenAI, Bytez)
+│   │   └── factory.py              # LLM Factory pattern (centralized provider selection)
 │   ├── memory/                     # Agent memory
-│   ├── api/                        # REST API
-│   ├── utils/                      # Utilities
-│   └── cli.py                      # CLI interface
+│   ├── api/                        # REST API & Webhooks
+│   └── utils/                      # Utilities
 ├── config/
 │   └── default_config.py           # Configuration (Centralized model settings)
 ├── docs/
@@ -301,10 +297,30 @@ Stateful execution with:
 
 ### 4. GitHub Integration
 
-- Automated PR reviews
+- Automated PR reviews via GitHub App
 - Summary comments at PR level
-- Optional inline comments at specific lines
-- Severity & category breakdowns
+- Trigger reviews with `/InspectAI_review` command
+- Supports: `/InspectAI_bugs`, `/InspectAI_security`, `/InspectAI_refactor`
+- Deployed on Render for 24/7 availability
+
+---
+
+## 🤖 Supported LLM Providers
+
+| Provider | Model | Best For | API Key Required |
+|----------|-------|----------|------------------|
+| **Gemini** (Default) | `gemini-2.0-flash` | Fast, cost-effective, great for code | `GEMINI_API_KEY` |
+| **OpenAI** | `gpt-4`, `gpt-4-turbo` | Highest quality, comprehensive analysis | `OPENAI_API_KEY` |
+| **Bytez** | `ibm-granite/granite-4.0-h-tiny` | Lightweight, specialized models | `BYTEZ_API_KEY` |
+
+### Switching Providers
+
+All LLM configuration is centralized in `config/default_config.py`:
+
+```python
+# Change this ONE line to switch providers across entire project
+DEFAULT_PROVIDER = "gemini"  # Options: "gemini", "openai", "bytez"
+```
 
 ---
 
@@ -355,19 +371,16 @@ Stateful execution with:
 
 3. **Test**:
    ```bash
-   python -m src.cli review test_file.py --type code_improvement
+   python examples/langgraph_workflow_example.py
    ```
 
 ### Testing
 
 ```bash
-# Test with sample file (has intentional issues)
-python -m src.cli review tests/sample_code_with_issues.py --type full_review
-
 # Test LangGraph workflow
 python examples/langgraph_workflow_example.py
 
-# Run unit tests (when available)
+# Run unit tests
 pytest tests/
 ```
 
@@ -376,9 +389,8 @@ pytest tests/
 ## 📚 Documentation
 
 - **[LangGraph Integration Guide](docs/LANGGRAPH_GUIDE.md)** - Workflow orchestration details
-- **[GitHub PR Integration](docs/GITHUB_PR_INTEGRATION.md)** - How to post PR comments
-- **[Implementation Plan](docs/implementation_plan.md)** - Architectural decisions
-- **[Walkthrough](docs/walkthrough.md)** - Step-by-step guide to the refactoring
+- **[GitHub PR Integration](docs/GITHUB_PR_INTEGRATION.md)** - How to set up GitHub App
+- **[LLM Provider Guide](docs/LLM_PROVIDER_GUIDE.md)** - Configure Gemini, OpenAI, or Bytez
 
 ---
 
@@ -404,7 +416,8 @@ MIT License - see [LICENSE](LICENSE) for details
 
 - Inspired by [Ellipsis.dev](https://www.ellipsis.dev/blog/how-we-built-ellipsis)
 - Built with [LangGraph](https://langchain-ai.github.io/langgraph/)
-- Uses [tree-sitter](https://tree-sitter.github.io/tree-sitter/) for AST parsing
+- Powered by [Google Gemini](https://ai.google.dev/)
+- Deployed on [Render](https://render.com)
 
 ---
 
