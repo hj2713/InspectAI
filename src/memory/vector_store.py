@@ -212,3 +212,58 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Cleanup failed: {e}")
             return 0
+
+    def delete_repo_data(self, repo_id: str) -> bool:
+        """Delete all data for a repository.
+        
+        Args:
+            repo_id: Repository ID to delete
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Get all document IDs for this repo
+            results = self.collection.get(
+                where={"repo_id": repo_id}
+            )
+            
+            if results["ids"]:
+                self.collection.delete(ids=results["ids"])
+                logger.info(f"Deleted {len(results['ids'])} documents for {repo_id}")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete repo data: {e}")
+            return False
+
+    def delete_by_filter(self, repo_id: str, type_filter: str) -> int:
+        """Delete documents matching type filter within a repo.
+        
+        Args:
+            repo_id: Repository ID
+            type_filter: Type of documents to delete (e.g., 'bug_finding')
+            
+        Returns:
+            Number of documents deleted
+        """
+        try:
+            # Get matching documents
+            results = self.collection.get(
+                where={
+                    "$and": [
+                        {"repo_id": repo_id},
+                        {"type": type_filter}
+                    ]
+                }
+            )
+            
+            if results["ids"]:
+                self.collection.delete(ids=results["ids"])
+                logger.info(f"Deleted {len(results['ids'])} {type_filter} documents for {repo_id}")
+                return len(results["ids"])
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to delete by filter: {e}")
+            return 0
