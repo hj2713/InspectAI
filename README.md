@@ -189,4 +189,4 @@ Areas for improvement:
 
 - Inspired by [Ellipsis.dev](https://www.ellipsis.dev/blog/how-we-built-ellipsis)
 - Powered by [Google Gemini](https://ai.google.dev/)
-- Deployed on [Render](https://render.com)
+- Deployed on [Render](https://render.com) & [GCP](https://console.cloud.google.com)
