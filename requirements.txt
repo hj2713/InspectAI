@@ -2,12 +2,22 @@
 python-dotenv>=0.19.0
 langchain>=0.0.300
 langchain-openai>=0.0.5
+langgraph>=0.0.20
+langchain-core>=0.1.0
 openai>=1.0.0
 transformers>=4.30.0
 torch>=2.0.0
 numpy>=1.24.0
 pandas>=2.0.0
 requests>=2.28.0
+
+# Code analysis dependencies
+tree-sitter>=0.20.0
+tree-sitter-python>=0.20.0
+
+# Filtering utilities
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.20.0
 
 # API dependencies
 fastapi>=0.100.0

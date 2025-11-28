@@ -1,0 +1,16 @@
+# Production dependencies only (no torch/transformers - using Bytez API)
+python-dotenv>=0.19.0
+requests>=2.28.0
+openai>=1.0.0
+
+# API dependencies
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+
+# LLM providers
+bytez>=0.0.0
+
+# GitHub App authentication
+PyJWT>=2.8.0
+cryptography>=41.0.0

@@ -1,146 +1,114 @@
-"""Security Analysis Agent for identifying vulnerabilities in code."""
+"""Security Analysis Agent for identifying vulnerabilities in code.
+
+This agent orchestrates multiple specialized sub-agents for comprehensive security analysis.
+"""
 from typing import Any, Dict, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .base_agent import BaseAgent
+from .security.injection_scanner import InjectionScanner
+from .security.auth_scanner import AuthScanner
+from .security.data_exposure_scanner import DataExposureScanner
+from .security.dependency_scanner import DependencyScanner
+from .filter_pipeline import create_default_pipeline, Finding
 
 
 class SecurityAnalysisAgent(BaseAgent):
-    """Agent specialized in security vulnerability detection.
-    
-    This is a stub implementation. Full functionality will be added later.
-    """
-    
-    VULNERABILITY_CATEGORIES = [
-        "SQL Injection",
-        "XSS (Cross-Site Scripting)",
-        "CSRF (Cross-Site Request Forgery)",
-        "Path Traversal",
-        "Command Injection",
-        "Insecure Deserialization",
-        "Hardcoded Credentials",
-        "Sensitive Data Exposure",
-        "Authentication Issues",
-        "Authorization Issues",
-        "Cryptographic Weaknesses",
-        "Input Validation",
-    ]
+    """Orchestrator for security analysis sub-agents."""
     
     def initialize(self) -> None:
-        """Initialize security analysis LLM client."""
+        """Initialize all security sub-agents."""
         cfg = self.config or {}
-        use_local = cfg.get("use_local", False)
-        provider = cfg.get("provider", "openai")
-
-        if use_local:
-            try:
-                from ..llm.local_client import LocalLLMClient as LLMClient
-                self.client = LLMClient(
-                    default_temperature=cfg.get("temperature", 0.1),
-                    default_max_tokens=cfg.get("max_tokens", 1024)
-                )
-                return
-            except Exception as e:
-                print("Warning: failed to initialize local LLM client:", e)
-                print("Falling back to cloud provider.")
-
-        from ..llm.client import LLMClient
-        self.client = LLMClient(
-            default_temperature=cfg.get("temperature", 0.1),
-            default_max_tokens=cfg.get("max_tokens", 1024),
-            provider=provider
+        
+        # Initialize specialized sub-agents
+        self.sub_agents = {
+            "injection": InjectionScanner(cfg),
+            "auth": AuthScanner(cfg),
+            "data_exposure": DataExposureScanner(cfg),
+            "dependencies": DependencyScanner(cfg)
+        }
+        
+        # Create filter pipeline with high confidence threshold for security
+        confidence_threshold = cfg.get("confidence_threshold", 0.65)
+        self.filter_pipeline = create_default_pipeline(
+            confidence_threshold=confidence_threshold,
+            similarity_threshold=85,
+            strict_evidence=False
         )
-
+    
     def process(self, code: str) -> Dict[str, Any]:
-        """
-        Analyze code for security vulnerabilities.
+        """Analyze code using all security sub-agents in parallel.
         
         Args:
-            code: Source code to analyze for security issues
+            code: Source code to analyze
             
         Returns:
-            Dict containing vulnerabilities, risk levels, and remediation suggestions
+            Dict containing filtered security findings from all sub-agents
         """
-        categories_str = "\n".join(f"- {cat}" for cat in self.VULNERABILITY_CATEGORIES)
+        all_findings: List[Finding] = []
         
-        system = {
-            "role": "system",
-            "content": f"""You are a security expert specialized in code security analysis. 
-Analyze code for security vulnerabilities including but not limited to:
-{categories_str}
-
-For each vulnerability found, provide:
-1. Category (from the list above or "Other")
-2. Severity: Critical, High, Medium, Low
-3. Location in the code
-4. Description of the vulnerability
-5. Remediation steps
-
-Format each finding as:
-VULNERABILITY: [Category]
-Severity: [level]
-Location: [line/function]
-Description: [explanation]
-Remediation: [how to fix]
-"""
-        }
+        # Run sub-agents in parallel
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_agent = {
+                executor.submit(agent.analyze, code): name
+                for name, agent in self.sub_agents.items()
+            }
+            
+            for future in as_completed(future_to_agent):
+                agent_name = future_to_agent[future]
+                try:
+                    findings = future.result()
+                    print(f"{agent_name}: Found {len(findings)} vulnerabilities")
+                    all_findings.extend(findings)
+                except Exception as e:
+                    print(f"Error in {agent_name}: {e}")
         
-        user = {
-            "role": "user",
-            "content": f"Perform a security audit on this code:\n\n```\n{code}\n```"
-        }
-
-        resp = self.client.chat(
-            [system, user],
-            model=self.config.get("model"),
-            temperature=self.config.get("temperature"),
-            max_tokens=self.config.get("max_tokens")
-        )
-
-        vulnerabilities = self._parse_vulnerabilities(resp)
-
+        print(f"\nTotal vulnerabilities before filtering: {len(all_findings)}")
+        
+        # Apply filter pipeline
+        filtered_findings = self.filter_pipeline.process(all_findings)
+        
+        # Convert to structured vulnerability format
+        vulnerabilities = []
+        for finding in filtered_findings:
+            vuln = finding.to_dict()
+            vulnerabilities.append(vuln)
+        
+        # Generate analysis summary
+        analysis_summary = self._generate_summary(filtered_findings)
+        
+        # Calculate risk score
+        risk_score = self._calculate_risk_score(filtered_findings)
+        
         return {
             "status": "ok",
-            "raw_analysis": resp,
+            "raw_analysis": analysis_summary,
             "vulnerabilities": vulnerabilities,
-            "vulnerability_count": len(vulnerabilities),
-            "risk_score": self._calculate_risk_score(vulnerabilities)
+            "vulnerability_count": len(filtered_findings),
+            "risk_score": risk_score,
+            "vulnerabilities_by_severity": self._group_by_severity(filtered_findings),
+            "vulnerabilities_by_category": self._group_by_category(filtered_findings)
         }
-
-    def _parse_vulnerabilities(self, response: str) -> List[Dict[str, str]]:
-        """Parse vulnerability information from LLM response."""
-        vulnerabilities = []
-        current_vuln = {}
+    
+    def _generate_summary(self, findings: List[Finding]) -> str:
+        """Generate a text summary of security findings."""
+        if not findings:
+            return "Security analysis complete. No significant vulnerabilities found."
         
-        for line in response.splitlines():
-            line = line.strip()
-            if not line:
-                if current_vuln:
-                    vulnerabilities.append(current_vuln)
-                    current_vuln = {}
-                continue
-                
-            if line.upper().startswith("VULNERABILITY"):
-                if current_vuln:
-                    vulnerabilities.append(current_vuln)
-                category = line.split(":", 1)[1].strip() if ":" in line else "Unknown"
-                current_vuln = {"category": category}
-            elif line.lower().startswith("severity:"):
-                current_vuln["severity"] = line.split(":", 1)[1].strip().lower()
-            elif line.lower().startswith("location:"):
-                current_vuln["location"] = line.split(":", 1)[1].strip()
-            elif line.lower().startswith("description:"):
-                current_vuln["description"] = line.split(":", 1)[1].strip()
-            elif line.lower().startswith("remediation:"):
-                current_vuln["remediation"] = line.split(":", 1)[1].strip()
+        summary_parts = [f"Detected {len(findings)} security vulnerabilities:\n"]
         
-        if current_vuln:
-            vulnerabilities.append(current_vuln)
-            
-        return vulnerabilities
-
-    def _calculate_risk_score(self, vulnerabilities: List[Dict[str, str]]) -> float:
+        # Group by severity
+        by_severity = self._group_by_severity(findings)
+        for severity in ["critical", "high", "medium", "low"]:
+            if severity in by_severity:
+                count = by_severity[severity]
+                summary_parts.append(f"- {severity.capitalize()}: {count}")
+        
+        return "\n".join(summary_parts)
+    
+    def _calculate_risk_score(self, findings: List[Finding]) -> float:
         """Calculate overall risk score based on vulnerabilities found."""
-        if not vulnerabilities:
+        if not findings:
             return 0.0
             
         severity_weights = {
@@ -151,14 +119,29 @@ Remediation: [how to fix]
         }
         
         total_score = sum(
-            severity_weights.get(v.get("severity", "low"), 1.0)
-            for v in vulnerabilities
+            severity_weights.get(f.severity, 1.0) * f.confidence
+            for f in findings
         )
         
         # Normalize to 0-10 scale
-        max_score = len(vulnerabilities) * 10
+        max_score = len(findings) * 10
         return min(10.0, (total_score / max_score) * 10) if max_score > 0 else 0.0
-
+    
+    def _group_by_severity(self, findings: List[Finding]) -> Dict[str, int]:
+        """Group findings by severity."""
+        severities = {}
+        for finding in findings:
+            severities[finding.severity] = severities.get(finding.severity, 0) + 1
+        return severities
+    
+    def _group_by_category(self, findings: List[Finding]) -> Dict[str, int]:
+        """Group findings by category."""
+        categories = {}
+        for finding in findings:
+            categories[finding.category] = categories.get(finding.category, 0) + 1
+        return categories
+    
     def cleanup(self) -> None:
-        """Cleanup resources."""
-        pass
+        """Cleanup all sub-agents."""
+        for agent in self.sub_agents.values():
+            agent.cleanup()

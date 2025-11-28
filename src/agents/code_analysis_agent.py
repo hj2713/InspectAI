@@ -1,52 +1,119 @@
-"""Code Analysis Agent for understanding and analyzing code."""
+"""Code Analysis Agent for understanding and analyzing code.
+
+This agent orchestrates multiple specialized sub-agents for comprehensive code review.
+"""
 from typing import Any, Dict, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .base_agent import BaseAgent
+from .code_review.naming_reviewer import NamingReviewer
+from .code_review.quality_reviewer import QualityReviewer
+from .code_review.duplication_detector import DuplicationDetector
+from .code_review.pep8_reviewer import PEP8Reviewer
+from .filter_pipeline import create_default_pipeline, Finding
 
 
 class CodeAnalysisAgent(BaseAgent):
+    """Orchestrator for code review sub-agents."""
+    
     def initialize(self) -> None:
-        """Initialize code analysis LLM client."""
+        """Initialize all code review sub-agents."""
         cfg = self.config or {}
-        use_local = cfg.get("use_local", False)
-        provider = cfg.get("provider", "openai")
-
-        if use_local:
-            try:
-                from ..llm.local_client import LocalLLMClient as LLMClient
-
-                self.client = LLMClient(default_temperature=cfg.get("temperature", 0.2), default_max_tokens=cfg.get("max_tokens", 1024))
-                return
-            except Exception as e:
-                print("Warning: failed to initialize local LLM client:", e)
-                print("Falling back to OpenAI client.")
-
-        # fallback to OpenAI or configured provider
-        from ..llm.client import LLMClient
-        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.2), default_max_tokens=cfg.get("max_tokens", 1024), provider=provider)
-
+        
+        # Initialize specialized sub-agents
+        self.sub_agents = {
+            "naming": NamingReviewer(cfg),
+            "quality": QualityReviewer(cfg),
+            "duplication": DuplicationDetector(cfg),
+            "pep8": PEP8Reviewer(cfg)
+        }
+        
+        # Create filter pipeline
+        confidence_threshold = cfg.get("confidence_threshold", 0.5)
+        self.filter_pipeline = create_default_pipeline(
+            confidence_threshold=confidence_threshold,
+            similarity_threshold=85,
+            strict_evidence=False
+        )
+    
     def process(self, code: str) -> Dict[str, Any]:
+        """Analyze code using all sub-agents in parallel.
+        
+        Args:
+            code: Source code to analyze
+            
+        Returns:
+            Dict containing filtered findings from all sub-agents
         """
-        Analyze provided code and return insights and suggestions.
-        """
-        system = {"role": "system", "content": "You are a senior software engineer and code reviewer. Provide clear, actionable suggestions for improving the code (readability, types, docs, edge-cases, bugs)."}
-        user = {"role": "user", "content": f"Analyze the following code and return: (1) a short summary, (2) a numbered list of suggestions (each 1-2 sentences). Use plain text. Code:\n\n{code}"}
-
-        resp = self.client.chat([system, user], model=self.config.get("model"), temperature=self.config.get("temperature"), max_tokens=self.config.get("max_tokens"))
-
-        # Try to extract suggestions lines for easy consumption (best-effort)
+        all_findings: List[Finding] = []
+        
+        # Run sub-agents in parallel
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_agent = {
+                executor.submit(agent.analyze, code): name
+                for name, agent in self.sub_agents.items()
+            }
+            
+            for future in as_completed(future_to_agent):
+                agent_name = future_to_agent[future]
+                try:
+                    findings = future.result()
+                    print(f"{agent_name}: Found {len(findings)} findings")
+                    all_findings.extend(findings)
+                except Exception as e:
+                    print(f"Error in {agent_name}: {e}")
+        
+        print(f"\nTotal findings before filtering: {len(all_findings)}")
+        
+        # Apply filter pipeline
+        filtered_findings = self.filter_pipeline.process(all_findings)
+        
+        # Convert to dict format
         suggestions = []
-        for line in resp.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            # Lines that start with '-' or a digit are likely suggestions
-            if line.startswith("-") or line[0].isdigit():
-                # Remove leading bullet/number
-                cleaned = line.lstrip("- ").lstrip("0123456789. ")
-                suggestions.append(cleaned)
-
-        return {"status": "ok", "analysis": resp, "suggestions": suggestions}
-
+        for finding in filtered_findings:
+            suggestions.append(finding.to_dict())
+        
+        # Generate summary
+        analysis_summary = self._generate_summary(filtered_findings)
+        
+        return {
+            "status": "ok",
+            "analysis": analysis_summary,
+            "suggestions": suggestions,
+            "findings_count": len(filtered_findings),
+            "findings_by_category": self._group_by_category(filtered_findings),
+            "findings_by_severity": self._group_by_severity(filtered_findings)
+        }
+    
+    def _generate_summary(self, findings: List[Finding]) -> str:
+        """Generate a text summary of findings."""
+        if not findings:
+            return "Code analysis complete. No significant issues found."
+        
+        summary_parts = [f"Found {len(findings)} issues:\n"]
+        
+        # Group by category
+        by_category = self._group_by_category(findings)
+        for category, count in by_category.items():
+            summary_parts.append(f"- {category}: {count}")
+        
+        return "\n".join(summary_parts)
+    
+    def _group_by_category(self, findings: List[Finding]) -> Dict[str, int]:
+        """Group findings by category."""
+        categories = {}
+        for finding in findings:
+            categories[finding.category] = categories.get(finding.category, 0) + 1
+        return categories
+    
+    def _group_by_severity(self, findings: List[Finding]) -> Dict[str, int]:
+        """Group findings by severity."""
+        severities = {}
+        for finding in findings:
+            severities[finding.severity] = severities.get(finding.severity, 0) + 1
+        return severities
+    
     def cleanup(self) -> None:
-        return None
+        """Cleanup all sub-agents."""
+        for agent in self.sub_agents.values():
+            agent.cleanup()

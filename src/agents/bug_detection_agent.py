@@ -1,129 +1,122 @@
-"""Bug Detection Agent for identifying bugs and errors in code."""
+"""Bug Detection Agent for identifying bugs and errors in code.
+
+This agent orchestrates multiple specialized sub-agents for comprehensive bug detection.
+"""
 from typing import Any, Dict, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .base_agent import BaseAgent
+from .bug_detection.logic_error_detector import LogicErrorDetector
+from .bug_detection.edge_case_analyzer import EdgeCaseAnalyzer
+from .bug_detection.type_error_detector import TypeErrorDetector
+from .bug_detection.runtime_issue_detector import RuntimeIssueDetector
+from .filter_pipeline import create_default_pipeline, Finding
 
 
 class BugDetectionAgent(BaseAgent):
-    """Agent specialized in detecting bugs, errors, and potential issues in code.
-    
-    This is a stub implementation. Full functionality will be added later.
-    """
+    """Orchestrator for bug detection sub-agents."""
     
     def initialize(self) -> None:
-        """Initialize bug detection LLM client."""
+        """Initialize all bug detection sub-agents."""
         cfg = self.config or {}
-        use_local = cfg.get("use_local", False)
-        provider = cfg.get("provider", "openai")
-
-        if use_local:
-            try:
-                from ..llm.local_client import LocalLLMClient as LLMClient
-                self.client = LLMClient(
-                    default_temperature=cfg.get("temperature", 0.1),
-                    default_max_tokens=cfg.get("max_tokens", 1024)
-                )
-                return
-            except Exception as e:
-                print("Warning: failed to initialize local LLM client:", e)
-                print("Falling back to cloud provider.")
-
-        from ..llm.client import LLMClient
-        self.client = LLMClient(
-            default_temperature=cfg.get("temperature", 0.1),
-            default_max_tokens=cfg.get("max_tokens", 1024),
-            provider=provider
+        
+        # Initialize specialized sub-agents
+        self.sub_agents = {
+            "logic_errors": LogicErrorDetector(cfg),
+            "edge_cases": EdgeCaseAnalyzer(cfg),
+            "type_errors": TypeErrorDetector(cfg),
+            "runtime_issues": RuntimeIssueDetector(cfg)
+        }
+        
+        # Create filter pipeline with higher confidence threshold for bugs
+        confidence_threshold = cfg.get("confidence_threshold", 0.6)
+        self.filter_pipeline = create_default_pipeline(
+            confidence_threshold=confidence_threshold,
+            similarity_threshold=85,
+            strict_evidence=False
         )
-
+    
     def process(self, code: str) -> Dict[str, Any]:
-        """
-        Analyze code to detect bugs, errors, and potential issues.
+        """Analyze code using all bug detection sub-agents in parallel.
         
         Args:
-            code: Source code to analyze for bugs
+            code: Source code to analyze
             
         Returns:
-            Dict containing detected bugs, severity levels, and fix suggestions
+            Dict containing filtered bug findings from all sub-agents
         """
-        system = {
-            "role": "system",
-            "content": """You are an expert bug hunter and code debugger. Your task is to:
-1. Identify potential bugs, errors, and issues in the code
-2. Classify each issue by severity (critical, high, medium, low)
-3. Explain why each issue is problematic
-4. Suggest a fix for each issue
-
-Format your response as:
-BUG 1: [severity] - [brief description]
-Location: [where in the code]
-Problem: [detailed explanation]
-Fix: [suggested fix]
-
-Continue for all bugs found."""
-        }
+        all_findings: List[Finding] = []
         
-        user = {
-            "role": "user",
-            "content": f"Analyze this code for bugs and issues:\n\n```\n{code}\n```"
-        }
-
-        resp = self.client.chat(
-            [system, user],
-            model=self.config.get("model"),
-            temperature=self.config.get("temperature"),
-            max_tokens=self.config.get("max_tokens")
-        )
-
-        # Parse bugs from response
-        bugs = self._parse_bugs(resp)
-
+        # Run sub-agents in parallel
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_agent = {
+                executor.submit(agent.analyze, code): name
+                for name, agent in self.sub_agents.items()
+            }
+            
+            for future in as_completed(future_to_agent):
+                agent_name = future_to_agent[future]
+                try:
+                    findings = future.result()
+                    print(f"{agent_name}: Found {len(findings)} bugs")
+                    all_findings.extend(findings)
+                except Exception as e:
+                    print(f"Error in {agent_name}: {e}")
+        
+        print(f"\nTotal bugs before filtering: {len(all_findings)}")
+        
+        # Apply filter pipeline
+        filtered_findings = self.filter_pipeline.process(all_findings)
+        
+        # Convert to structured bug format
+        bugs = []
+        for finding in filtered_findings:
+            bug = finding.to_dict()
+            bugs.append(bug)
+        
+        # Generate analysis summary
+        analysis_summary = self._generate_summary(filtered_findings)
+        
         return {
             "status": "ok",
-            "raw_analysis": resp,
+            "raw_analysis": analysis_summary,
             "bugs": bugs,
-            "bug_count": len(bugs)
+            "bug_count": len(filtered_findings),
+            "bugs_by_severity": self._group_by_severity(filtered_findings),
+            "bugs_by_category": self._group_by_category(filtered_findings)
         }
-
-    def _parse_bugs(self, response: str) -> List[Dict[str, str]]:
-        """Parse bug information from LLM response."""
-        bugs = []
-        current_bug = {}
+    
+    def _generate_summary(self, findings: List[Finding]) -> str:
+        """Generate a text summary of bug findings."""
+        if not findings:
+            return "Bug detection complete. No significant bugs found."
         
-        for line in response.splitlines():
-            line = line.strip()
-            if not line:
-                if current_bug:
-                    bugs.append(current_bug)
-                    current_bug = {}
-                continue
-                
-            if line.upper().startswith("BUG"):
-                if current_bug:
-                    bugs.append(current_bug)
-                # Parse severity and description
-                parts = line.split("-", 1)
-                severity = "medium"
-                description = line
-                if len(parts) == 2:
-                    sev_part = parts[0].lower()
-                    for sev in ["critical", "high", "medium", "low"]:
-                        if sev in sev_part:
-                            severity = sev
-                            break
-                    description = parts[1].strip()
-                current_bug = {"severity": severity, "description": description}
-            elif line.lower().startswith("location:"):
-                current_bug["location"] = line.split(":", 1)[1].strip()
-            elif line.lower().startswith("problem:"):
-                current_bug["problem"] = line.split(":", 1)[1].strip()
-            elif line.lower().startswith("fix:"):
-                current_bug["fix"] = line.split(":", 1)[1].strip()
+        summary_parts = [f"Detected {len(findings)} potential bugs:\n"]
         
-        if current_bug:
-            bugs.append(current_bug)
-            
-        return bugs
-
+        # Group by severity
+        by_severity = self._group_by_severity(findings)
+        for severity in ["critical", "high", "medium", "low"]:
+            if severity in by_severity:
+                count = by_severity[severity]
+                summary_parts.append(f"- {severity.capitalize()}: {count}")
+        
+        return "\n".join(summary_parts)
+    
+    def _group_by_severity(self, findings: List[Finding]) -> Dict[str, int]:
+        """Group findings by severity."""
+        severities = {}
+        for finding in findings:
+            severities[finding.severity] = severities.get(finding.severity, 0) + 1
+        return severities
+    
+    def _group_by_category(self, findings: List[Finding]) -> Dict[str, int]:
+        """Group findings by category."""
+        categories = {}
+        for finding in findings:
+            categories[finding.category] = categories.get(finding.category, 0) + 1
+        return categories
+    
     def cleanup(self) -> None:
-        """Cleanup resources."""
-        pass
+        """Cleanup all sub-agents."""
+        for agent in self.sub_agents.values():
+            agent.cleanup()

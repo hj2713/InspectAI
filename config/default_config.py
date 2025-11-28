@@ -1,41 +1,69 @@
 """Default configuration for the Multi-Agent Code Review System."""
 
+# LLM Provider Configuration
+# Options: "openai", "bytez", "local" (for Qwen or other local models)
+DEFAULT_PROVIDER = "local"  # Change to "openai" for production
+
+# Qwen Model Configuration (adjust based on your model)
+QWEN_MODEL_NAME = "qwen2.5-coder"  # or "qwen2.5" or specific model path
+
 ORCHESTRATOR_CONFIG = {
     "research": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.7,
-        "max_tokens": 1024
+        "max_tokens": 1024,
+        "confidence_threshold": 0.5
     },
     "analysis": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.2,
-        "max_tokens": 1024
+        "max_tokens": 1024,
+        "confidence_threshold": 0.5  # For code review findings
     },
     "generation": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.3,
-        "max_tokens": 2048
+        "max_tokens": 2048,
+        "confidence_threshold": 0.5
     },
     "bug_detection": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.1,
-        "max_tokens": 1024
+        "max_tokens": 1024,
+        "confidence_threshold": 0.6  # Higher threshold for bug findings
     },
     "security": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.1,
-        "max_tokens": 1024
+        "max_tokens": 1024,
+        "confidence_threshold": 0.65  # Highest threshold for security findings
     },
     "test_generation": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.3,
-        "max_tokens": 2048
+        "max_tokens": 2048,
+        "confidence_threshold": 0.5
     },
     "documentation": {
-        "model": "gpt-4",
+        "model": QWEN_MODEL_NAME,
+        "provider": DEFAULT_PROVIDER,
         "temperature": 0.3,
-        "max_tokens": 2048
+        "max_tokens": 2048,
+        "confidence_threshold": 0.5
     }
+}
+
+# Filter Pipeline Configuration
+FILTER_CONFIG = {
+    "confidence_threshold": 0.5,  # Default for code review
+    "similarity_threshold": 85,  # For deduplication (0-100)
+    "strict_evidence": False  # Set to True to require evidence for all findings
 }
 
 # Logging configuration
