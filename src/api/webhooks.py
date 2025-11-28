@@ -210,15 +210,11 @@ async def handle_agent_command(
             files_analyzed = 0
             
             for pr_file in pr.files:
-                logger.info(f"Checking file: {pr_file.filename}, status: {pr_file.status}")
-                
                 if pr_file.status == "removed":
-                    logger.info(f"Skipping removed file: {pr_file.filename}")
                     continue
                 
                 # Only analyze code files
                 if not orchestrator._is_code_file(pr_file.filename):
-                    logger.info(f"Skipping non-code file: {pr_file.filename}")
                     continue
                 
                 try:
@@ -335,8 +331,6 @@ def _format_findings_message(
 
 **Triggered by:** @{comment_author}
 **Command:** `/InspectAI_{command}`
-**PR:** #{pr_number}
-**Repository:** {repo_full_name}
 **Files Analyzed:** {files_analyzed}
 
 ---
@@ -388,11 +382,11 @@ def _format_findings_message(
             message_parts.append(f"\n*... and {len(findings) - 10} more findings*\n")
     
     message_parts.append("\n---\n")
-    message_parts.append("⚡ *Powered by InspectAI - 12 Specialized AI Agents*\n\n")
+    message_parts.append("⚡ *Powered by InspectAI*\n\n")
     message_parts.append("💡 **Available Commands:**\n")
-    message_parts.append("- `/InspectAI_review` - Full review (12 agents)\n")
-    message_parts.append("- `/InspectAI_bugs` - Bug detection (4 agents)\n")
-    message_parts.append("- `/InspectAI_refactor` - Code improvements (4 agents)\n")
+    message_parts.append("- `/InspectAI_review` - Full review \n")
+    message_parts.append("- `/InspectAI_bugs` - Bug detection \n")
+    message_parts.append("- `/InspectAI_refactor` - Code improvements \n")
     
     return "".join(message_parts)
 
