@@ -12,15 +12,10 @@ class NamingReviewer(SpecializedAgent):
     
     def initialize(self) -> None:
         """Initialize LLM client for naming analysis."""
-        cfg = self.config or {}
-        provider = cfg.get("provider", "openai")
+        from ...llm import get_llm_client_from_config
         
-        from ...llm.client import LLMClient
-        self.client = LLMClient(
-            default_temperature=cfg.get("temperature", 0.2),
-            default_max_tokens=cfg.get("max_tokens", 1024),
-            provider=provider
-        )
+        cfg = self.config or {}
+        self.client = get_llm_client_from_config(cfg)
     
     def analyze(self, code: str) -> List[Finding]:
         """Analyze code for naming convention issues.

@@ -70,13 +70,17 @@ class SpecializedAgent(ABC):
         self.client = None
         self.initialize()
     
-    @abstractmethod
+    
     def initialize(self) -> None:
-        """Initialize the LLM client and any resources.
+        """Initialize LLM client using centralized factory.
         
-        This method should set up self.client with the appropriate LLM provider.
+        Override this if agent needs custom initialization logic,
+        but still use get_llm_client() for LLM client creation.
         """
-        pass
+        from ..llm import get_llm_client_from_config
+        
+        cfg = self.config or {}
+        self.client = get_llm_client_from_config(cfg)
     
     @abstractmethod
     def analyze(self, code: str) -> List[Finding]:

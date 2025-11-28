@@ -15,9 +15,8 @@ class DuplicationDetector(SpecializedAgent):
         cfg = self.config or {}
         provider = cfg.get("provider", "openai")
         
-        from ...llm.client import LLMClient
-        self.client = LLMClient(
-            default_temperature=cfg.get("temperature", 0.2),
+        from ...llm import get_llm_client_from_config
+        self.client = get_llm_client_from_config(cfg)
             default_max_tokens=cfg.get("max_tokens", 1024),
             provider=provider
         )

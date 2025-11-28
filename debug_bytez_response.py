@@ -1,12 +1,13 @@
 import os
 from dotenv import load_dotenv
 from bytez import Bytez
+from config.default_config import BYTEZ_MODEL
 
 load_dotenv()
 key = os.getenv("BYTEZ_API_KEY")
 client = Bytez(key)
-# Use a model known to exist in Bytez docs
-model = client.model("Qwen/Qwen3-0.6B")
+# Use the centralized model constant
+model = client.model(BYTEZ_MODEL)
 
 print("Running model...")
 resp = model.run("Hello")

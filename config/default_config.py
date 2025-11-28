@@ -1,58 +1,62 @@
-"""Default configuration for the Multi-Agent Code Review System."""
+"""Default configuration for the Multi-Agent Code Review System.
 
-# LLM Provider Configuration
-# Options: "openai", "bytez", "local" (for Qwen or other local models)
-DEFAULT_PROVIDER = "local"  # Change to "openai" for production
+IMPORTANT: This is the SINGLE SOURCE OF TRUTH for LLM provider configuration.
+Change DEFAULT_PROVIDER here, and it affects the ENTIRE project automatically.
 
-# Qwen Model Configuration (adjust based on your model)
-QWEN_MODEL_NAME = "qwen2.5-coder"  # or "qwen2.5" or specific model path
+Supported Providers:
+- "openai": OpenAI GPT models (requires OPENAI_API_KEY)
+- "bytez": Bytez API (requires BYTEZ_API_KEY)
+- "local": Local models via Bytez (Qwen, etc.)
+"""
+
+# ===================================================================================
+# LLM PROVIDER CONFIGURATION - Change this ONE place to affect entire project
+# ===================================================================================
+
+DEFAULT_PROVIDER = "local"  # Options: "openai", "bytez", "local"
+
+# For OpenAI (when DEFAULT_PROVIDER = "openai")
+OPENAI_MODEL = "gpt-4"  # or "gpt-3.5-turbo", "gpt-4-turbo", etc.
+
+# For Bytez/Local (when DEFAULT_PROVIDER = "bytez" or "local")
+BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Primary Bytez model
+
+# ===================================================================================
+# AGENT CONFIGURATIONS - These will automatically use DEFAULT_PROVIDER
+# ===================================================================================
 
 ORCHESTRATOR_CONFIG = {
     "research": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.7,
         "max_tokens": 1024,
         "confidence_threshold": 0.5
     },
     "analysis": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.2,
         "max_tokens": 1024,
         "confidence_threshold": 0.5  # For code review findings
     },
     "generation": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.3,
         "max_tokens": 2048,
         "confidence_threshold": 0.5
     },
     "bug_detection": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.1,
-        "max_tokens": 1024,
+        "max_tokens":  1024,
         "confidence_threshold": 0.6  # Higher threshold for bug findings
     },
     "security": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.1,
         "max_tokens": 1024,
         "confidence_threshold": 0.65  # Highest threshold for security findings
     },
     "test_generation": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.3,
         "max_tokens": 2048,
         "confidence_threshold": 0.5
     },
     "documentation": {
-        "model": QWEN_MODEL_NAME,
-        "provider": DEFAULT_PROVIDER,
         "temperature": 0.3,
         "max_tokens": 2048,
         "confidence_threshold": 0.5

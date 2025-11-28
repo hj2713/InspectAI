@@ -79,7 +79,8 @@ def get_orchestrator():
             if isinstance(config[key], dict):
                 config[key]["provider"] = provider
                 if provider == "bytez":
-                    config[key]["model"] = "Qwen/Qwen3-0.6B"
+                    from config.default_config import BYTEZ_MODEL
+                    config[key]["model"] = BYTEZ_MODEL
         
         _orchestrator = OrchestratorAgent(config)
     
