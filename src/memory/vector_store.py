@@ -2,23 +2,32 @@
 
 This module provides a wrapper around ChromaDB to store and retrieve
 embeddings with strict metadata filtering for multi-tenancy.
+
+ChromaDB is optional - if not installed, a simple in-memory fallback is used.
 """
 import os
 import uuid
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-import chromadb
-from chromadb.config import Settings
-from chromadb.utils import embedding_functions
-
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Try to import chromadb - it's optional
+try:
+    import chromadb
+    from chromadb.utils import embedding_functions
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    logger.warning("chromadb not installed - using in-memory fallback for vector store")
+    CHROMADB_AVAILABLE = False
+    chromadb = None
+    embedding_functions = None
+
 
 class VectorStore:
-    """Multi-tenant vector store using ChromaDB."""
+    """Multi-tenant vector store using ChromaDB (with in-memory fallback)."""
     
     def __init__(self, persist_path: str = ".chroma_db"):
         """Initialize vector store.
@@ -27,8 +36,15 @@ class VectorStore:
             persist_path: Path to store ChromaDB data
         """
         self.persist_path = persist_path
+        self.client = None
+        self.collection = None
+        self._memory_store: Dict[str, Dict] = {}  # Fallback storage
         
-        # Initialize client
+        if not CHROMADB_AVAILABLE:
+            logger.info("VectorStore using in-memory fallback (chromadb not available)")
+            return
+        
+        # Initialize ChromaDB client
         try:
             self.client = chromadb.PersistentClient(path=persist_path)
             
@@ -71,13 +87,22 @@ class VectorStore:
         
         doc_id = doc_id or str(uuid.uuid4())
         
+        # Use in-memory fallback if chromadb not available
+        if not self.collection:
+            self._memory_store[doc_id] = {
+                "text": text,
+                "metadata": metadata
+            }
+            logger.debug(f"Added document {doc_id} to in-memory store")
+            return doc_id
+        
         try:
             self.collection.add(
                 documents=[text],
                 metadatas=[metadata],
                 ids=[doc_id]
             )
-            self._update_activity(metadata["repo_id"])
+            self._update_activity(metadata.get("repo_id", "unknown"))
             logger.debug(f"Added document {doc_id} to vector store")
             return doc_id
             
@@ -105,6 +130,27 @@ class VectorStore:
         """
         if not query:
             return []
+        
+        # Use in-memory fallback if chromadb not available
+        if not self.collection:
+            results = []
+            for doc_id, doc in self._memory_store.items():
+                if doc["metadata"].get("repo_id") == repo_id:
+                    # Check additional filters
+                    if additional_filter:
+                        match = all(
+                            doc["metadata"].get(k) == v 
+                            for k, v in additional_filter.items()
+                        )
+                        if not match:
+                            continue
+                    results.append({
+                        "id": doc_id,
+                        "content": doc["text"],
+                        "metadata": doc["metadata"],
+                        "distance": 0.0
+                    })
+            return results[:n_results]
             
         self._update_activity(repo_id)
             
@@ -222,6 +268,19 @@ class VectorStore:
         Returns:
             True if successful
         """
+        # In-memory fallback
+        if not self.collection:
+            deleted = 0
+            to_delete = [
+                doc_id for doc_id, doc in self._memory_store.items()
+                if doc["metadata"].get("repo_id") == repo_id
+            ]
+            for doc_id in to_delete:
+                del self._memory_store[doc_id]
+                deleted += 1
+            logger.info(f"Deleted {deleted} documents for {repo_id} (in-memory)")
+            return True
+        
         try:
             # Get all document IDs for this repo
             results = self.collection.get(
@@ -247,6 +306,20 @@ class VectorStore:
         Returns:
             Number of documents deleted
         """
+        # In-memory fallback
+        if not self.collection:
+            deleted = 0
+            to_delete = [
+                doc_id for doc_id, doc in self._memory_store.items()
+                if doc["metadata"].get("repo_id") == repo_id 
+                and doc["metadata"].get("type") == type_filter
+            ]
+            for doc_id in to_delete:
+                del self._memory_store[doc_id]
+                deleted += 1
+            logger.info(f"Deleted {deleted} {type_filter} documents for {repo_id} (in-memory)")
+            return deleted
+        
         try:
             # Get matching documents
             results = self.collection.get(
