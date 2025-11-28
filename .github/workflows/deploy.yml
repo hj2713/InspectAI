@@ -102,7 +102,15 @@ jobs:
             --min-instances 0 \
             --max-instances 10
 
-      # Step 9: Get and display the service URL
+      # Step 9: Make service publicly accessible
+      - name: Allow Unauthenticated Access
+        run: |
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --member="allUsers" \
+            --role="roles/run.invoker"
+
+      # Step 10: Get and display the service URL
       - name: Get Service URL
         run: |
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
