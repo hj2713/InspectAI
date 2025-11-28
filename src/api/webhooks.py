@@ -154,7 +154,7 @@ async def handle_agent_command(
     command: str,
     installation_id: Optional[int] = None
 ) -> Dict[str, Any]:
-    """Handle InspectAI agent commands.
+    """Handle InspectAI agent commands with REAL specialized agents.
     
     Args:
         repo_full_name: Full repository name (owner/repo)
@@ -166,124 +166,165 @@ async def handle_agent_command(
     Returns:
         Result of posting comment
     """
+    from ..orchestrator.orchestrator import OrchestratorAgent
+    from config.default_config import ORCHESTRATOR_CONFIG
+    import copy
+    
     logger.info(f"Handling /InspectAI_{command} command for {repo_full_name}#{pr_number} by {comment_author}")
     
     try:
-        # Initialize GitHub client with installation token (no user token needed!)
+        # Initialize GitHub client
         if installation_id:
             github_client = GitHubClient.from_installation(installation_id)
             logger.info(f"Using GitHub App installation token for installation {installation_id}")
         else:
-            # Fallback to env token (for testing)
             github_client = GitHubClient()
             logger.warning("No installation_id provided, using fallback token")
         
-        # Agent-specific responses (dummy for now - will be replaced with real agent logic)
-        if command == "review":
-            emoji = "🔍"
-            agent_name = "Code Reviewer Agent"
-            description = "Analyzes code for incorrect logic, poor naming, and insecure code patterns"
-            dummy_findings = """
-### 📋 Code Review Findings (Demo)
-
-#### ⚠️ Issues Found:
-
-1. **Naming Convention** (Line 15)
-   - Variable `x` should have a more descriptive name
-   - Suggestion: Rename to `user_count` or similar
-
-2. **Security Warning** (Line 42)
-   - Potential SQL injection vulnerability detected
-   - Suggestion: Use parameterized queries
-
-3. **Code Style** (Line 78)
-   - Function `doStuff()` is too long (150+ lines)
-   - Suggestion: Break into smaller functions
-
-#### ✅ Good Practices Observed:
-- Proper error handling in API calls
-- Consistent indentation
-- Good use of type hints
-"""
-
-        elif command == "bugs":
-            emoji = "🐛"
-            agent_name = "Bug Finder Agent"
-            description = "Simulates code execution to detect runtime errors and edge case bugs"
-            dummy_findings = """
-### 🐛 Bug Analysis Report (Demo)
-
-#### 🚨 Potential Bugs Detected:
-
-1. **Null Reference Error** (Line 23)
-   - `user.name` accessed without null check
-   - Could crash if `user` is undefined
-   ```python
-   # Fix suggestion:
-   if user and user.name:
-       print(user.name)
-   ```
-
-2. **Off-by-One Error** (Line 56)
-   - Loop iterates `i <= len(arr)` instead of `i < len(arr)`
-   - Will cause IndexError on last iteration
-
-3. **Race Condition** (Line 89)
-   - Shared resource accessed without lock
-   - May cause data corruption in concurrent execution
-
-#### 🧪 Edge Cases to Test:
-- Empty input arrays
-- Negative numbers
-- Unicode characters in strings
-"""
-
-        elif command == "refactor":
-            emoji = "♻️"
-            agent_name = "Refactor Agent"
-            description = "Suggests maintainable code improvements while preserving functionality"
-            dummy_findings = """
-### ♻️ Refactoring Suggestions (Demo)
-
-#### 🔧 Recommended Improvements:
-
-1. **Extract Method** (Lines 45-67)
-   - Complex logic can be extracted into `calculate_discount()`
-   - Improves readability and testability
-
-2. **Replace Magic Numbers** (Line 12)
-   - `if count > 100:` → `if count > MAX_RETRY_COUNT:`
-   - Define constants for better maintainability
-
-3. **Use List Comprehension** (Lines 78-82)
-   ```python
-   # Before:
-   result = []
-   for item in items:
-       if item.active:
-           result.append(item.name)
-   
-   # After:
-   result = [item.name for item in items if item.active]
-   ```
-
-4. **Apply DRY Principle** (Lines 100, 145, 189)
-   - Duplicate code found in 3 locations
-   - Suggestion: Create shared utility function
-
-#### 📊 Metrics:
-- Cyclomatic Complexity: 15 → 8 (after refactoring)
-- Lines of Code: 250 → 180
-- Test Coverage Impact: +15%
-"""
-        else:
-            emoji = "❓"
-            agent_name = "Unknown Agent"
-            description = "Unknown command"
-            dummy_findings = "No analysis available for this command."
+        # Map command to task type
+        task_mapping = {
+            "review": "full_review",  # All 12 agents
+            "bugs": "bug_fix",  # Bug detection agents
+            "refactor": "code_improvement"  # Code review agents only
+        }
         
-        # Build the response message
-        message = f"""{emoji} **{agent_name}** - Analysis Complete
+        task_type = task_mapping.get(command, "full_review")
+        
+        # Initialize orchestrator with configured provider
+        config = copy.deepcopy(ORCHESTRATOR_CONFIG)
+        provider = os.getenv("LLM_PROVIDER", "local")
+        
+        for key in config:
+            if isinstance(config[key], dict):
+                config[key]["provider"] = provider
+        
+        orchestrator = OrchestratorAgent(config)
+        
+        try:
+            # Get PR files to analyze
+            pr = github_client.get_pull_request(repo_full_name, pr_number)
+            
+            # Analyze all changed files
+            all_findings = []
+            files_analyzed = 0
+            
+            for pr_file in pr.files:
+                if pr_file.status == "removed":
+                    continue
+                
+                # Only analyze code files
+                if not orchestrator._is_code_file(pr_file.filename):
+                    continue
+                
+                try:
+                    content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
+                    logger.info(f"Analyzing {pr_file.filename}...")
+                    
+                    # Run analysis based on command
+                    if command == "review":
+                        # Full review: all 12 agents
+                        analysis = orchestrator.agents["analysis"].process(content)
+                        bugs = orchestrator.agents["bug_detection"].process(content)
+                        security = orchestrator.agents["security"].process(content)
+                        
+                        # Collect findings
+                        for s in analysis.get("suggestions", []):
+                            if isinstance(s, dict):
+                                s["file"] = pr_file.filename
+                                all_findings.append(s)
+                        
+                        for b in bugs.get("bugs", []):
+                            if isinstance(b, dict):
+                                b["file"] = pr_file.filename
+                                all_findings.append(b)
+                        
+                        for v in security.get("vulnerabilities", []):
+                            if isinstance(v, dict):
+                                v["file"] = pr_file.filename
+                                all_findings.append(v)
+                    
+                    elif command == "bugs":
+                        # Bug detection only
+                        bugs = orchestrator.agents["bug_detection"].process(content)
+                        for b in bugs.get("bugs", []):
+                            if isinstance(b, dict):
+                                b["file"] = pr_file.filename
+                                all_findings.append(b)
+                    
+                    elif command == "refactor":
+                        # Code review only
+                        analysis = orchestrator.agents["analysis"].process(content)
+                        for s in analysis.get("suggestions", []):
+                            if isinstance(s, dict):
+                                s["file"] = pr_file.filename
+                                all_findings.append(s)
+                    
+                    files_analyzed += 1
+                    
+                except Exception as e:
+                    logger.error(f"Failed to analyze {pr_file.filename}: {e}")
+                    continue
+            
+            # Generate summary comment
+            message = _format_findings_message(
+                command,
+                comment_author,
+                pr_number,
+                repo_full_name,
+                all_findings,
+                files_analyzed
+            )
+            
+            # Post comment
+            result = github_client.post_pr_comment(
+                repo_url=repo_full_name,
+                pr_number=pr_number,
+                body=message
+            )
+            
+            logger.info(f"Successfully posted analysis on {repo_full_name}#{pr_number} ({len(all_findings)} findings)")
+            return {"status": "success", "comment_id": result.get("id"), "findings_count": len(all_findings)}
+            
+        finally:
+            orchestrator.cleanup()
+        
+    except Exception as e:
+        logger.error(f"Failed to handle command on {repo_full_name}#{pr_number}: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+def _format_findings_message(
+    command: str,
+    comment_author: str,
+    pr_number: int,
+    repo_full_name: str,
+    findings: list,
+    files_analyzed: int
+) -> str:
+    """Format findings into GitHub comment.
+    
+    Args:
+        command: Command type (review, bugs, refactor)
+        comment_author: Comment author
+        pr_number: PR number
+        repo_full_name: Repository name
+        findings: List of finding dicts
+        files_analyzed: Number of files analyzed
+        
+    Returns:
+        Formatted markdown comment
+    """
+    # Command metadata
+    command_info = {
+        "review": ("🔍", "Code Review", "Comprehensive review using 12 specialized agents"),
+        "bugs": ("🐛", "Bug Detection", "Bug analysis using 4 specialized detectors"),
+        "refactor": ("♻️", "Code Improvement", "Refactoring suggestions using 4 code review agents")
+    }
+    
+    emoji, title, description = command_info.get(command, ("❓", "Analysis", "Code analysis"))
+    
+    # Header
+    message_parts = [f"""{emoji} **{title}** - Analysis Complete
 
 > {description}
 
@@ -291,31 +332,64 @@ async def handle_agent_command(
 **Command:** `/InspectAI_{command}`
 **PR:** #{pr_number}
 **Repository:** {repo_full_name}
+**Files Analyzed:** {files_analyzed}
 
 ---
-{dummy_findings}
-
----
-⚡ *This is a demo response. Real analysis coming soon!*
-
-💡 **Available Commands:**
-- `/InspectAI_review` - Code review for logic, naming, security
-- `/InspectAI_bugs` - Bug detection and edge case analysis  
-- `/InspectAI_refactor` - Refactoring suggestions
-"""
+"""]
+    
+    if not findings:
+        message_parts.append("✅ **No issues found!** Code looks good.\n")
+    else:
+        # Group by severity
+        by_severity = {}
+        for f in findings:
+            sev = f.get("severity", "medium")
+            by_severity.setdefault(sev, []).append(f)
         
-        result = github_client.post_pr_comment(
-            repo_url=repo_full_name,
-            pr_number=pr_number,
-            body=message
-        )
+        # Stats
+        message_parts.append(f"### 📊 Summary\n\n")
+        message_parts.append(f"**Total Findings:** {len(findings)}\n\n")
         
-        logger.info(f"Successfully posted {agent_name} response on {repo_full_name}#{pr_number}")
-        return {"status": "success", "comment_id": result.get("id"), "agent": agent_name}
+        for sev in ["critical", "high", "medium", "low"]:
+            if sev in by_severity:
+                icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(sev, "⚪")
+                message_parts.append(f"{icon} **{sev.capitalize()}**: {len(by_severity[sev])}\n")
         
-    except Exception as e:
-        logger.error(f"Failed to post comment on {repo_full_name}#{pr_number}: {e}", exc_info=True)
-        return {"status": "error", "error": str(e)}
+        message_parts.append("\n---\n\n")
+       
+        # Top findings (limit to 10)
+        message_parts.append("### 🔍 Top Findings\n\n")
+        
+        for i, finding in enumerate(findings[:10], 1):
+            category = finding.get("category", "Issue")
+            severity = finding.get("severity", "medium")
+            description = finding.get("description", "")
+            fix = finding.get("fix_suggestion") or finding.get("fix") or finding.get("remediation", "")
+            file = finding.get("file", "unknown")
+            location = finding.get("location", "")
+            confidence = finding.get("confidence", 0.0)
+            
+            sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(severity, "⚪")
+            
+            message_parts.append(f"**{i}. [{sev_icon} {severity.upper()}] {category}** - `{file}`\n")
+            message_parts.append(f"   - {description}\n")
+            if location:
+                message_parts.append(f"   - Location: {location}\n")
+            if fix:
+                message_parts.append(f"   - **Fix:** {fix}\n")
+            message_parts.append(f"   - Confidence: {confidence:.0%}\n\n")
+        
+        if len(findings) > 10:
+            message_parts.append(f"\n*... and {len(findings) - 10} more findings*\n")
+    
+    message_parts.append("\n---\n")
+    message_parts.append("⚡ *Powered by InspectAI - 12 Specialized AI Agents*\n\n")
+    message_parts.append("💡 **Available Commands:**\n")
+    message_parts.append("- `/InspectAI_review` - Full review (12 agents)\n")
+    message_parts.append("- `/InspectAI_bugs` - Bug detection (4 agents)\n")
+    message_parts.append("- `/InspectAI_refactor` - Code improvements (4 agents)\n")
+    
+    return "".join(message_parts)
 
 
 @router.post("/github")
