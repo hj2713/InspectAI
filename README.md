@@ -17,6 +17,7 @@ A production-grade multi-agent system powered by **12 specialized AI agents** fo
 - **Parallel Execution**: 4x faster via ThreadPoolExecutor
 - **GitHub Integration**: Automated PR reviews with inline comments
 - **Multiple LLM Support**: Qwen (local), OpenAI, Bytez
+- **Web File Support**: Analyzes HTML, CSS, JSON, XML, and shell scripts
 - **Production Ready**: Confidence scoring, evidence-based findings, graceful degradation
 
 ---
@@ -112,9 +113,9 @@ pip install -r requirements.txt
 3. **Update `config/default_config.py`:**
 
    ```python
-   # For Qwen (testing)
-   DEFAULT_PROVIDER = "local"
-   QWEN_MODEL_NAME = "qwen2.5-coder"
+   # For Bytez (testing/production)
+   DEFAULT_PROVIDER = "bytez"
+   BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Change model here for entire project
 
    # For OpenAI (production)
    DEFAULT_PROVIDER = "openai"
@@ -236,21 +237,24 @@ InspectAI/
 │   │   └── client.py               # GitHub API client
 │   ├── llm/                        # LLM providers
 │   │   ├── client.py               # OpenAI/Bytez client
-│   │   └── local_client.py         # Local HuggingFace client
+│   │   ├── local_client.py         # Local HuggingFace client
+│   │   └── factory.py              # LLM Factory pattern
 │   ├── memory/                     # Agent memory
 │   ├── api/                        # REST API
 │   ├── utils/                      # Utilities
 │   └── cli.py                      # CLI interface
 ├── config/
-│   └── default_config.py           # Configuration (Qwen/OpenAI settings)
+│   └── default_config.py           # Configuration (Centralized model settings)
 ├── docs/
 │   ├── LANGGRAPH_GUIDE.md          # LangGraph integration guide
-│   └── GITHUB_PR_INTEGRATION.md    # GitHub PR review guide
+│   ├── GITHUB_PR_INTEGRATION.md    # GitHub PR review guide
+│   └── LLM_PROVIDER_GUIDE.md       # LLM setup guide
 ├── examples/
 │   └── langgraph_workflow_example.py
 ├── tests/
 │   └── sample_code_with_issues.py  # Test file with intentional bugs
 ├── requirements.txt
+├── update_agents.py                # Script to update agent configurations
 └── README.md
 ```
 
