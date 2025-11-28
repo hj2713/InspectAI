@@ -17,19 +17,31 @@ class AuthScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for authentication/authorization issues.
         
         Args:
-            code: Python source code to analyze
-            context: Optional additional context for the analysis (e.g., related code, configuration)
+            code: Source code to analyze
+            context: Optional additional context for the analysis
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to auth issues
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+
         system_prompt = {
             "role": "system",
-            "content": """You are a security expert specializing in authentication/authorization. Analyze for auth issues ONLY.
+            "content": f"""You are a security expert specializing in authentication/authorization in {language}. Analyze for auth issues ONLY.
 
 Focus on:
 1. Missing authentication checks before sensitive operations
@@ -37,6 +49,7 @@ Focus on:
 3. Authorization bypass (accessing resources without permission checks)
 4. Insecure session management
 5. Missing access control checks
+6. Language-specific auth vulnerabilities
 
 For EACH auth issue found, respond with this EXACT format:
 Category: Authentication/Authorization
@@ -50,7 +63,7 @@ Only report actual auth issues. If auth is properly handled, respond with "No au
 """
         }
         
-        prompt_content = f"Analyze this Python code for authentication issues:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for authentication issues:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             

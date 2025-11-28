@@ -17,26 +17,41 @@ class DependencyScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for insecure dependencies.
         
         Args:
-            code: Python source code to analyze
+            code: Source code to analyze
             context: Optional[str]: Additional context or description of the code.
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to dependency issues
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+            elif filename.endswith(".json"):
+                language = "JSON"
+
         system_prompt = {
             "role": "system",
-            "content": """You are a security expert specializing in dependency security. Analyze for dependency security issues ONLY.
+            "content": f"""You are a security expert specializing in dependency security for {language}. Analyze for dependency security issues ONLY.
 
 Focus on:
-1. Use of deprecated/unsafe functions (e.g., pickle.loads, eval, exec)
+1. Use of deprecated/unsafe functions (e.g., eval, exec, unsafe deserialization)
 2. Insecure deserialization patterns
 3. Known vulnerable library usage patterns
-4. Unsafe XML parsing (XXE vulnerabilities)
-5. Use of weak cryptographic functions (MD5, SHA1 for security)
+4. Unsafe parsing (e.g., XML XXE)
+5. Use of weak cryptographic functions
+6. Language-specific dependency risks (e.g., npm audit issues in package.json)
 
 For EACH dependency security issue found, respond with this EXACT format:
 Category: Dependency/Library Security
@@ -50,7 +65,7 @@ Only report actual dependency security issues. If dependencies are used safely, 
 """
         }
         
-        prompt_content = f"Analyze this Python code for dependency issues:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for dependency issues:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             

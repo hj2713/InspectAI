@@ -21,21 +21,33 @@ class RuntimeIssueDetector(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for potential runtime issues.
         
         Args:
-            code: Python source code to analyze
-            context: Optional additional context for analysis (e.g., related code, environment details)
+            code: Source code to analyze
+            context: Optional additional context for analysis
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to runtime issues
         """
         logger.info(f"[RuntimeIssueDetector] Starting analysis on {len(code)} chars of code")
         
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+
         system_prompt = {
             "role": "system",
-            "content": """You are an expert at finding runtime and performance issues. Analyze for runtime problems ONLY.
+            "content": f"""You are an expert at finding runtime and performance issues in {language}. Analyze for runtime problems ONLY.
 
 Focus on:
 1. Resource leaks (files not closed, connections not released)
@@ -43,6 +55,7 @@ Focus on:
 3. Performance issues (O(n²) when O(n) possible)
 4. Blocking operations without timeouts
 5. Inefficient loops or data structures
+6. Language-specific runtime pitfalls
 
 For EACH runtime issue found, respond with this EXACT format:
 Category: Runtime Issue
@@ -56,7 +69,7 @@ Only report actual runtime issues. If code is efficient, respond with "No runtim
 """
         }
         
-        prompt_content = f"Analyze this Python code for runtime issues:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for runtime issues:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             

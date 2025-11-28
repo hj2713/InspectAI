@@ -21,28 +21,40 @@ class TypeErrorDetector(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for potential type errors.
         
         Args:
-            code: Python source code to analyze
+            code: Source code to analyze
             context: Optional context or additional information for analysis.
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to type errors
         """
         logger.info(f"[TypeErrorDetector] Starting analysis on {len(code)} chars of code")
         
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+
         system_prompt = {
             "role": "system",
-            "content": """You are an expert at finding type errors in Python. Analyze for type issues ONLY.
+            "content": f"""You are an expert at finding type errors in {language}. Analyze for type issues ONLY.
 
 Focus on:
 1. Type mismatches (passing wrong type to function)
-2. Operations on incompatible types (string + int without conversion)
-3. Missing or incorrect type hints
+2. Operations on incompatible types
+3. Missing or incorrect type hints/annotations (if applicable)
 4. Returning wrong type from function
-5. Mixing bytes and strings
+5. Language-specific type coercion issues
 
 For EACH type error found, respond with this EXACT format:
 Category: Type Error
@@ -56,7 +68,7 @@ Only report actual type errors. If types are correct, respond with "No type erro
 """
         }
         
-        prompt_content = f"Analyze this Python code for type errors:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for type errors:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context (e.g. type definitions):\n{context}"
             

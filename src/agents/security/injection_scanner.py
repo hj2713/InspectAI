@@ -17,25 +17,41 @@ class InjectionScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for injection vulnerabilities.
         
         Args:
-            code: Python source code to analyze
+            code: Source code to analyze
+            context: Optional context
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to injection vulnerabilities
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+            elif filename.endswith(".php"):
+                language = "PHP"
+
         system_prompt = {
             "role": "system",
-            "content": """You are a security expert specializing in injection attacks. Analyze for injection vulnerabilities ONLY.
+            "content": f"""You are a security expert specializing in injection attacks in {language}. Analyze for injection vulnerabilities ONLY.
 
 Focus on:
-1. SQL injection (string concatenation in SQL queries)
-2. Command injection (os.system, subprocess with user input)
+1. SQL injection (string concatenation in queries)
+2. Command injection (executing system commands with user input)
 3. Path traversal (file operations with user-provided paths)
-4. LDAP injection
-5. NoSQL injection
+4. LDAP/NoSQL injection
+5. XSS (Cross-Site Scripting) if applicable
+6. Template injection
 
 For EACH injection vulnerability found, respond with this EXACT format:
 Category: Injection Vulnerability
@@ -49,7 +65,7 @@ Only report actual injection risks. If code is safe, respond with "No injection 
 """
         }
         
-        prompt_content = f"Analyze this Python code for injection vulnerabilities:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for injection vulnerabilities:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             
