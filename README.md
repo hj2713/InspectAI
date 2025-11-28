@@ -302,9 +302,27 @@ Stateful execution with:
 
 - Automated PR reviews via GitHub App
 - Summary comments at PR level
-- Trigger reviews with `/InspectAI_review` command
-- Supports: `/InspectAI_bugs`, `/InspectAI_security`, `/InspectAI_refactor`
+- Inline comments on specific lines
 - Deployed on Render for 24/7 availability
+
+#### Available Commands
+
+Comment these in any PR to trigger InspectAI:
+
+| Command | Description |
+|---------|-------------|
+| `/inspectai_review` | **Quick code review** - Reviews only the changed lines in your PR. Focuses on code quality (style, naming, structure). Fast feedback on your edits. |
+| `/inspectai_bugs` | **Deep bug scan** - Scans for bugs and errors caused by your changes. Finds logic errors, null pointers, race conditions, security issues. Stores findings for `/inspectai_fixbugs`. |
+| `/inspectai_refactor` | **Refactoring suggestions** - Suggests improvements for changed code. Recommends better patterns, cleaner abstractions, performance optimizations. |
+| `/inspectai_fixbugs` | **Auto-fix bugs** - Automatically fixes bugs found by `/inspectai_bugs`. Generates code fixes and commits them directly to your PR branch. |
+| `/inspectai_help` | **Show help** - Displays all available commands and their descriptions. |
+
+**Workflow Example:**
+1. Make changes to your code and open a PR
+2. Comment `/inspectai_bugs` to find issues
+3. Review the inline comments InspectAI adds
+4. Comment `/inspectai_fixbugs` to auto-fix the detected bugs
+5. Review the commits InspectAI made and run your tests
 
 ### 5. 🧠 Multi-Tenant Vector Memory
 
