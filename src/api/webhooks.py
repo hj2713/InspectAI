@@ -656,7 +656,7 @@ async def _handle_bugs_command(
     summary = f"""## 🐛 InspectAI Bug Detection
 
 **Triggered by:** @{comment_author}
-**Files Scanned:** {files_scanned} (entire files, not just diff)
+**Files Scanned:** {files_scanned}
 **Bugs Found:** {len(all_bugs)}
 
 {severity_summary if severity_summary else "✅ No bugs found!"}
@@ -666,7 +666,6 @@ async def _handle_bugs_command(
 
 ---
 {"💡 **Run `/inspectai_fixbugs` to auto-fix these bugs!**" if all_bugs else ""}
-*Bugs are stored in memory and can be fixed with `/inspectai_fixbugs`*
 """
     
     if inline_comments:
@@ -825,15 +824,12 @@ async def _handle_fixbugs_command(
 
 **Triggered by:** @{comment_author}
 
-⚠️ **No bugs found in memory to fix!**
+⚠️ **No bugs found to fix!**
 
 Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs` to fix them.
-
----
-*The fixbugs command uses bugs detected by `/inspectai_bugs`*
 """
         github_client.post_pr_comment(repo_full_name, pr_number, message)
-        return {"status": "no_bugs", "message": "No bugs in memory"}
+        return {"status": "no_bugs", "message": "No bugs found"}
     
     logger.info(f"[FIXBUGS] Found {len(unfixed_bugs)} unfixed bugs in memory")
     
