@@ -3,7 +3,7 @@
 This agent focuses on PEP 8 style guide violations beyond just naming,
 including formatting, imports, and documentation.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 
@@ -17,6 +17,15 @@ class PEP8Reviewer(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+        """Analyze code for PEP 8 style guide violations.
+        
+        Args:
+            code: Python source code to analyze
+            context: Optional additional context
+            
+        Returns:
+            List of Finding objects related to PEP 8 compliance
         """
         system_prompt = {
             "role": "system",

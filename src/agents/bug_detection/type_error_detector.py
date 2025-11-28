@@ -3,7 +3,7 @@
 This agent focuses on type mismatches, missing type hints, incorrect type usage,
 and type-related bugs in Python code.
 """
-from typing import List
+from typing import List, Optional
 import logging
 from ..specialized_agent import SpecializedAgent, Finding
 

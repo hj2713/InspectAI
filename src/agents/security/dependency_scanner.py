@@ -3,7 +3,7 @@
 This agent focuses on detecting usage of known vulnerable dependencies
 and insecure library usage patterns.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 

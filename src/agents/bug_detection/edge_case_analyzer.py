@@ -3,7 +3,7 @@
 This agent focuses on null/None checks, boundary conditions, empty collections,
 and other edge cases that could cause runtime errors.
 """
-from typing import List
+from typing import List, Optional
 import logging
 from ..specialized_agent import SpecializedAgent, Finding
 

@@ -3,7 +3,7 @@
 This agent focuses on detecting authentication and authorization issues,
 access control problems, and session management flaws.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 

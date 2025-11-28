@@ -3,7 +3,7 @@
 This agent focuses specifically on naming conventions, variable clarity,
 and identifier quality in Python code.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 

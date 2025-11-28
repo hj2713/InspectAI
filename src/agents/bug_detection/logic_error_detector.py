@@ -3,7 +3,7 @@
 This agent focuses on off-by-one errors, infinite loops, incorrect algorithms,
 and flawed logic in code.
 """
-from typing import List
+from typing import List, Optional
 import logging
 from ..specialized_agent import SpecializedAgent, Finding
 

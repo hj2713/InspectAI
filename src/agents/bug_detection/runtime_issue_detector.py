@@ -3,7 +3,7 @@
 This agent focuses on resource leaks, performance issues, and runtime problems
 that don't cause immediate crashes but affect program execution.
 """
-from typing import List
+from typing import List, Optional
 import logging
 from ..specialized_agent import SpecializedAgent, Finding
 

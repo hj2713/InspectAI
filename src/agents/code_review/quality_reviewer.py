@@ -3,7 +3,7 @@
 This agent focuses on code complexity, readability, best practices,
 and overall code quality issues.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 

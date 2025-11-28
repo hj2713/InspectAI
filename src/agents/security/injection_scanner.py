@@ -3,7 +3,7 @@
 This agent focuses on detecting SQL injection, command injection, path traversal,
 and other injection vulnerabilities.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 

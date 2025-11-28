@@ -3,7 +3,7 @@
 This agent focuses on detecting duplicated code patterns and suggesting refactoring
 opportunities.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 

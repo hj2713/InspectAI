@@ -3,7 +3,7 @@
 This agent focuses on detecting hardcoded credentials, sensitive data leaks,
 and improper data handling that could expose confidential information.
 """
-from typing import List
+from typing import List, Optional
 from ..specialized_agent import SpecializedAgent, Finding
 
 
