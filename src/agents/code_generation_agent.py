@@ -8,20 +8,11 @@ import re
 
 class CodeGenerationAgent(BaseAgent):
     def initialize(self) -> None:
+        """Initialize LLM client using centralized factory."""
+        from ..llm import get_llm_client_from_config
+        
         cfg = self.config or {}
-        use_local = cfg.get("use_local", False)
-        provider = cfg.get("provider", "openai")
-
-        if use_local:
-            try:
-                from ..llm.local_client import LocalLLMClient as LLMClient
-                self.client = LLMClient(default_temperature=cfg.get("temperature", 0.3), default_max_tokens=cfg.get("max_tokens", 1024))
-                return
-            except ImportError:
-                pass # Fallback
-
-        from ..llm.client import LLMClient
-        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.3), default_max_tokens=cfg.get("max_tokens", 1024), provider=provider)
+        self.client = get_llm_client_from_config(cfg)
 
     def process(self, specification: Dict[str, Any]) -> Dict[str, Any]:
         """

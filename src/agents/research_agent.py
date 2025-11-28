@@ -5,24 +5,11 @@ from .base_agent import BaseAgent
 
 class ResearchAgent(BaseAgent):
     def initialize(self) -> None:
-        """Initialize research tools and LLM client."""
+        """Initialize LLM client using centralized factory."""
+        from ..llm import get_llm_client_from_config
+        
         cfg = self.config or {}
-        use_local = cfg.get("use_local", False)
-        provider = cfg.get("provider", "openai")
-
-        if use_local:
-            try:
-                from ..llm.local_client import LocalLLMClient as LLMClient
-
-                self.client = LLMClient(default_temperature=cfg.get("temperature", 0.7), default_max_tokens=cfg.get("max_tokens", 1024))
-                return
-            except Exception as e:
-                print("Warning: failed to initialize local LLM client:", e)
-                print("Falling back to OpenAI client. If you want only local, disable fallback in config.")
-
-        # fallback to OpenAI client or configured provider
-        from ..llm.client import LLMClient
-        self.client = LLMClient(default_temperature=cfg.get("temperature", 0.7), default_max_tokens=cfg.get("max_tokens", 1024), provider=provider)
+        self.client = get_llm_client_from_config(cfg)
 
     def process(self, query: str) -> Dict[str, Any]:
         """
