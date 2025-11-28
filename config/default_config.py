@@ -13,12 +13,12 @@ Supported Providers:
 # LLM PROVIDER CONFIGURATION - Change this ONE place to affect entire project
 # ===================================================================================
 
-DEFAULT_PROVIDER = "local"  # Options: "openai", "bytez", "local"
+DEFAULT_PROVIDER = "bytez"  # Options: "openai", "bytez"
 
 # For OpenAI (when DEFAULT_PROVIDER = "openai")
 OPENAI_MODEL = "gpt-4"  # or "gpt-3.5-turbo", "gpt-4-turbo", etc.
 
-# For Bytez/Local (when DEFAULT_PROVIDER = "bytez" or "local")
+# For Bytez (when DEFAULT_PROVIDER = "bytez")
 BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Primary Bytez model
 
 # ===================================================================================
