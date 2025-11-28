@@ -22,7 +22,7 @@ OPENAI_MODEL = "gpt-4"  # or "gpt-3.5-turbo", "gpt-4-turbo", etc.
 BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Primary Bytez model
 
 # For Gemini (when DEFAULT_PROVIDER = "gemini")
-GEMINI_MODEL = "gemini-2.5-pro"  # or "gemini-3-pro-preview", "gemini-1.5-flash", etc.
+GEMINI_MODEL = "gemini-2.0-flash"  # Fast, capable, no thinking tokens overhead
 
 # ===================================================================================
 # AGENT CONFIGURATIONS - These will automatically use DEFAULT_PROVIDER
@@ -31,37 +31,37 @@ GEMINI_MODEL = "gemini-2.5-pro"  # or "gemini-3-pro-preview", "gemini-1.5-flash"
 ORCHESTRATOR_CONFIG = {
     "research": {
         "temperature": 0.7,
-        "max_tokens": 1024,
+        "max_tokens": 4096,
         "confidence_threshold": 0.5
     },
     "analysis": {
         "temperature": 0.2,
-        "max_tokens": 1024,
+        "max_tokens": 4096,
         "confidence_threshold": 0.5  # For code review findings
     },
     "generation": {
         "temperature": 0.3,
-        "max_tokens": 2048,
+        "max_tokens": 8192,
         "confidence_threshold": 0.5
     },
     "bug_detection": {
         "temperature": 0.1,
-        "max_tokens":  1024,
+        "max_tokens": 4096,
         "confidence_threshold": 0.6  # Higher threshold for bug findings
     },
     "security": {
         "temperature": 0.1,
-        "max_tokens": 1024,
+        "max_tokens": 4096,
         "confidence_threshold": 0.65  # Highest threshold for security findings
     },
     "test_generation": {
         "temperature": 0.3,
-        "max_tokens": 2048,
+        "max_tokens": 8192,
         "confidence_threshold": 0.5
     },
     "documentation": {
         "temperature": 0.3,
-        "max_tokens": 2048,
+        "max_tokens": 8192,
         "confidence_threshold": 0.5
     }
 }
