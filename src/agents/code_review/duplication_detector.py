@@ -49,9 +49,13 @@ Only report actual duplication. If there's no duplication, respond with "No dupl
 """
         }
         
+        prompt_content = f"Analyze this Python code for duplication:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context (check against this for duplication):\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for duplication:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         response = self.client.chat(

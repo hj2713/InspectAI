@@ -41,9 +41,13 @@ Only report actual PEP 8 violations. If code follows PEP 8, respond with "No PEP
 """
         }
         
+        prompt_content = f"Analyze this Python code for PEP 8 violations:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context:\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for PEP 8 violations:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         response = self.client.chat(

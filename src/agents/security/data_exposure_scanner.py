@@ -50,9 +50,13 @@ Only report actual data exposure risks. If data is properly protected, respond w
 """
         }
         
+        prompt_content = f"Analyze this Python code for data exposure:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context:\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for data exposure risks:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         response = self.client.chat(

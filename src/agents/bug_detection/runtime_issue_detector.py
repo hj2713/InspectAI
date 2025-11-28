@@ -56,9 +56,13 @@ Only report actual runtime issues. If code is efficient, respond with "No runtim
 """
         }
         
+        prompt_content = f"Analyze this Python code for runtime issues:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context:\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for runtime issues:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         logger.info(f"[RuntimeIssueDetector] Sending request to LLM")

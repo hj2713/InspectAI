@@ -56,9 +56,13 @@ Only report actual edge case vulnerabilities. If edge cases are handled, respond
 """
         }
         
+        prompt_content = f"Analyze this Python code for missing edge cases:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context:\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for edge case issues:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         logger.info(f"[EdgeCaseAnalyzer] Sending request to LLM")

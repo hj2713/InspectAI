@@ -49,9 +49,13 @@ Only report actual injection risks. If code is safe, respond with "No injection 
 """
         }
         
+        prompt_content = f"Analyze this Python code for injection vulnerabilities:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context:\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for injection vulnerabilities:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         response = self.client.chat(

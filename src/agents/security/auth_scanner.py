@@ -50,9 +50,13 @@ Only report actual auth issues. If auth is properly handled, respond with "No au
 """
         }
         
+        prompt_content = f"Analyze this Python code for authentication issues:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context:\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for authentication/authorization issues:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         response = self.client.chat(

@@ -56,9 +56,13 @@ Only report actual type errors. If types are correct, respond with "No type erro
 """
         }
         
+        prompt_content = f"Analyze this Python code for type errors:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context (e.g. type definitions):\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for type errors:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         logger.info(f"[TypeErrorDetector] Sending request to LLM")

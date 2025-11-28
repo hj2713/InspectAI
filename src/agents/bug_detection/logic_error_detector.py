@@ -56,9 +56,13 @@ Only report actual logic errors. If logic appears correct, respond with "No logi
 """
         }
         
+        prompt_content = f"Analyze this Python code for logic errors:\n\n```python\n{code}\n```"
+        if context:
+            prompt_content += f"\n\nAdditional Context (e.g. requirements, related code):\n{context}"
+            
         user_prompt = {
             "role": "user",
-            "content": f"Analyze this Python code for logic errors:\n\n```python\n{code}\n```"
+            "content": prompt_content
         }
         
         logger.info(f"[LogicErrorDetector] Sending request to LLM")
