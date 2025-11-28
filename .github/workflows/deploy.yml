@@ -52,25 +52,39 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      # Step 4: Configure Docker for Artifact Registry
+      # Step 4: Enable APIs and Create Artifact Registry
+      - name: Setup GCP Resources
+        run: |
+          gcloud services enable artifactregistry.googleapis.com --quiet
+          gcloud services enable run.googleapis.com --quiet
+          
+          # Create Artifact Registry if it doesn't exist
+          if ! gcloud artifacts repositories describe inspectai --location=${{ env.REGION }} &>/dev/null; then
+            gcloud artifacts repositories create inspectai \
+              --repository-format=docker \
+              --location=${{ env.REGION }} \
+              --description="InspectAI Docker images"
+          fi
+
+      # Step 5: Configure Docker for Artifact Registry
       - name: Configure Docker
         run: |
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # Step 5: Build Docker image
+      # Step 6: Build Docker image
       - name: Build Docker image
         run: |
           docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }} .
           docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }} \
                      ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:latest
 
-      # Step 6: Push Docker image
+      # Step 7: Push Docker image
       - name: Push Docker image
         run: |
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:latest
 
-      # Step 7: Deploy to Cloud Run
+      # Step 8: Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -82,14 +96,13 @@ jobs:
             --set-env-vars "GITHUB_WEBHOOK_SECRET=${{ secrets.GITHUB_WEBHOOK_SECRET }}" \
             --set-env-vars "BYTEZ_API_KEY=${{ secrets.BYTEZ_API_KEY }}" \
             --set-env-vars "GITHUB_APP_PRIVATE_KEY=${{ secrets.APP_PRIVATE_KEY }}" \
-            --set-env-vars "LLM_PROVIDER=bytez" \
             --memory 1Gi \
             --cpu 1 \
             --timeout 300 \
             --min-instances 0 \
             --max-instances 10
 
-      # Step 8: Get and display the service URL
+      # Step 9: Get and display the service URL
       - name: Get Service URL
         run: |
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
