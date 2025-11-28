@@ -396,6 +396,7 @@ async def _handle_review_command(
     """Handle /inspectai_review - Reviews ONLY changed lines in PR diff.
     
     Posts inline comments on specific lines that have issues.
+    Focuses on issues INTRODUCED by the changes, not general code improvements.
     """
     logger.info(f"[REVIEW] Starting diff-only review for {repo_full_name}#{pr_number}")
     
@@ -420,18 +421,32 @@ async def _handle_review_command(
             content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
             lines = content.split('\n')
             
-            # Extract only the changed portions for analysis
-            changed_code_parts = []
-            for start, end, _ in changed_ranges:
-                snippet = '\n'.join(lines[max(0, start-1):min(len(lines), end+2)])
-                changed_code_parts.append(f"# Lines {start}-{end}:\n{snippet}")
-            
-            changed_code = '\n\n'.join(changed_code_parts)
+            # Build diff context for the LLM
+            diff_context = f"""FILE: {pr_file.filename}
+DIFF PATCH (shows what was changed with + for additions, - for removals):
+```diff
+{pr_file.patch}
+```
+
+FULL FILE CONTEXT:
+```
+{content}
+```
+
+CHANGED LINE RANGES: {', '.join([f'{s}-{e}' for s, e, _ in changed_ranges])}
+
+IMPORTANT INSTRUCTIONS:
+1. ONLY report issues that are CAUSED BY or INTRODUCED BY the changes shown in the diff
+2. Do NOT suggest general improvements to unchanged code
+3. Focus on: bugs introduced by changes, missing error handling for new code, logic errors in changed code
+4. If the changed code looks correct, report nothing - do not nitpick
+5. Each issue MUST include the exact line number from the changed ranges above
+"""
             
             logger.info(f"[REVIEW] Analyzing {len(changed_ranges)} changed regions in {pr_file.filename}")
             
-            # Run analysis on changed code only
-            analysis = orchestrator.agents["analysis"].process(changed_code)
+            # Run analysis with diff context
+            analysis = orchestrator.agents["analysis"].process(diff_context)
             
             # Create inline comments for findings
             for suggestion in analysis.get("suggestions", []):
@@ -527,16 +542,15 @@ async def _handle_bugs_command(
     pr,
     comment_author: str
 ) -> Dict[str, Any]:
-    """Handle /inspectai_bugs - Scans WHOLE files for bugs.
+    """Handle /inspectai_bugs - Finds bugs CAUSED BY the changed code.
     
+    Focuses on issues introduced by the PR changes, not generic code suggestions.
     Stores findings in memory for later use by /inspectai_fixbugs.
-    Posts inline comments on bug locations that are in the diff.
     """
-    logger.info(f"[BUGS] Starting full file bug scan for {repo_full_name}#{pr_number}")
+    logger.info(f"[BUGS] Starting bug scan for changes in {repo_full_name}#{pr_number}")
     
     all_bugs: List[BugFinding] = []
     inline_comments = []
-    bugs_not_in_diff = []  # Bugs on lines not in the diff
     files_scanned = 0
     
     # Build a map of which lines are in the diff for each file
@@ -555,24 +569,55 @@ async def _handle_bugs_command(
             continue
         
         try:
-            # Get FULL file content
+            # Get file content and diff
             content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
-            logger.info(f"[BUGS] Scanning entire file: {pr_file.filename} ({len(content)} bytes)")
-            
+            diff_patch = pr_file.patch if hasattr(pr_file, 'patch') else ""
             diff_lines = diff_lines_by_file.get(pr_file.filename, set())
             
-            # Run bug detection on entire file
-            bugs_result = orchestrator.agents["bug_detection"].process(content)
-            logger.info(f"[BUGS] Found {bugs_result.get('bug_count', 0)} bugs in {pr_file.filename}")
+            if not diff_lines:
+                logger.info(f"[BUGS] No changed lines in {pr_file.filename}, skipping")
+                continue
             
-            # Also run security scan
-            security_result = orchestrator.agents["security"].process(content)
-            logger.info(f"[BUGS] Found {security_result.get('vulnerability_count', 0)} vulnerabilities in {pr_file.filename}")
+            logger.info(f"[BUGS] Scanning {pr_file.filename} - {len(diff_lines)} changed lines")
             
-            # Convert to BugFinding objects and store in memory
+            # Build context that tells LLM what changed
+            diff_context = f"""
+=== IMPORTANT: FOCUS ONLY ON BUGS CAUSED BY THE CHANGES ===
+
+The following lines were CHANGED in this PR (these are the lines you should focus on):
+Changed line numbers: {sorted(diff_lines)}
+
+Here is the diff showing what was changed:
+```diff
+{diff_patch}
+```
+
+Your task: Find bugs, errors, or issues that are DIRECTLY CAUSED by these changes.
+Do NOT report:
+- General code style suggestions
+- Issues in unchanged parts of the code
+- Best practice recommendations unrelated to the changes
+
+Only report ACTUAL BUGS introduced by the changed code.
+"""
+            
+            # Run bug detection with diff context
+            bugs_result = orchestrator.agents["bug_detection"].process(content, context=diff_context)
+            logger.info(f"[BUGS] Bug detection returned {bugs_result.get('bug_count', 0)} bugs")
+            
+            # Also run security scan with diff context
+            security_result = orchestrator.agents["security"].process(content, context=diff_context)
+            logger.info(f"[BUGS] Security scan returned {security_result.get('vulnerability_count', 0)} vulnerabilities")
+            
+            # Convert to BugFinding objects - only keep bugs on changed lines
             for bug in bugs_result.get("bugs", []):
                 if isinstance(bug, dict):
                     line_num = extract_line_number_from_finding(bug) or 1
+                    
+                    # Only include bugs on lines that were actually changed
+                    if line_num not in diff_lines:
+                        logger.debug(f"[BUGS] Skipping bug on line {line_num} - not in diff")
+                        continue
                     
                     finding = BugFinding(
                         file_path=pr_file.filename,
@@ -586,21 +631,21 @@ async def _handle_bugs_command(
                     )
                     all_bugs.append(finding)
                     
-                    # Only add inline comment if line is in the diff
-                    if line_num in diff_lines:
-                        inline_comments.append({
-                            "path": pr_file.filename,
-                            "line": line_num,
-                            "side": "RIGHT",
-                            "body": _format_bug_comment(finding)
-                        })
-                    else:
-                        bugs_not_in_diff.append(finding)
+                    inline_comments.append({
+                        "path": pr_file.filename,
+                        "line": line_num,
+                        "side": "RIGHT",
+                        "body": _format_bug_comment(finding)
+                    })
             
-            # Add security vulnerabilities as bugs too
+            # Add security vulnerabilities
             for vuln in security_result.get("vulnerabilities", []):
                 if isinstance(vuln, dict):
                     line_num = extract_line_number_from_finding(vuln) or 1
+                    
+                    # Only include vulnerabilities on lines that were actually changed
+                    if line_num not in diff_lines:
+                        continue
                     
                     finding = BugFinding(
                         file_path=pr_file.filename,
@@ -614,15 +659,12 @@ async def _handle_bugs_command(
                     )
                     all_bugs.append(finding)
                     
-                    if line_num in diff_lines:
-                        inline_comments.append({
-                            "path": pr_file.filename,
-                            "line": line_num,
-                            "side": "RIGHT",
-                            "body": _format_bug_comment(finding)
-                        })
-                    else:
-                        bugs_not_in_diff.append(finding)
+                    inline_comments.append({
+                        "path": pr_file.filename,
+                        "line": line_num,
+                        "side": "RIGHT",
+                        "body": _format_bug_comment(finding)
+                    })
             
             files_scanned += 1
             
@@ -645,29 +687,18 @@ async def _handle_bugs_command(
         for s, c in sorted(severity_counts.items(), key=lambda x: ['critical', 'high', 'medium', 'low'].index(x[0]) if x[0] in ['critical', 'high', 'medium', 'low'] else 4)
     ])
     
-    # Build list of bugs not in diff for the main comment
-    bugs_not_in_diff_text = ""
-    if bugs_not_in_diff:
-        bugs_not_in_diff_text = "\n\n### 📋 Bugs Outside Changed Lines:\n"
-        for bug in bugs_not_in_diff[:10]:  # Limit to 10
-            sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(bug.severity, "⚪")
-            bugs_not_in_diff_text += f"\n- {sev_icon} **{bug.file_path}:{bug.line_number}** - {bug.category}: {bug.description[:100]}..."
-        if len(bugs_not_in_diff) > 10:
-            bugs_not_in_diff_text += f"\n- *...and {len(bugs_not_in_diff) - 10} more*"
-    
     summary = f"""## 🐛 InspectAI Bug Detection
 
 **Triggered by:** @{comment_author}
 **Files Scanned:** {files_scanned}
-**Bugs Found:** {len(all_bugs)}
+**Issues Found:** {len(all_bugs)}
 
-{severity_summary if severity_summary else "✅ No bugs found!"}
+{severity_summary if severity_summary else "✅ No issues found in changed code!"}
 
-{f"I've added **{len(inline_comments)} inline comments** on bugs in changed lines." if inline_comments else ""}
-{bugs_not_in_diff_text}
+{f"I've added **{len(inline_comments)} inline comments** on issues introduced by your changes." if inline_comments else ""}
 
 ---
-{"💡 **Run `/inspectai_fixbugs` to auto-fix these bugs!**" if all_bugs else ""}
+{"💡 **Run `/inspectai_fixbugs` to auto-fix these issues!**" if all_bugs else ""}
 """
     
     if inline_comments:
@@ -838,6 +869,8 @@ Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs`
         return {"status": "no_bugs", "message": "No bugs found"}
     
     logger.info(f"[FIXBUGS] Found {len(unfixed_bugs)} unfixed bugs in memory")
+    for i, bug in enumerate(unfixed_bugs):
+        logger.info(f"[FIXBUGS] Bug {i+1}: {bug.file_path}:{bug.line_number} - {bug.category}")
     
     # Group bugs by file
     bugs_by_file: Dict[str, List[BugFinding]] = {}
@@ -846,13 +879,17 @@ Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs`
             bugs_by_file[bug.file_path] = []
         bugs_by_file[bug.file_path].append(bug)
     
+    logger.info(f"[FIXBUGS] Grouped into {len(bugs_by_file)} files: {list(bugs_by_file.keys())}")
+    
     files_fixed = []
     files_failed = []
     
     for file_path, file_bugs in bugs_by_file.items():
+        logger.info(f"[FIXBUGS] Processing {file_path} with {len(file_bugs)} bugs")
         try:
             # Get current file content
             content = github_client.get_pr_file_content(repo_full_name, pr_number, file_path)
+            logger.info(f"[FIXBUGS] Got file content for {file_path}: {len(content)} chars")
             
             # Build detailed fix prompt with all bug info
             bug_descriptions = "\n".join([
@@ -877,10 +914,13 @@ Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs`
                 ]
             }
             
+            logger.info(f"[FIXBUGS] Calling code generation agent for {file_path}")
             fix_result = orchestrator.agents["generation"].process(fix_prompt)
+            logger.info(f"[FIXBUGS] Got fix result keys: {fix_result.keys() if isinstance(fix_result, dict) else 'not a dict'}")
             
             # Extract the fixed code
             fixed_code = fix_result.get("generated_code") or fix_result.get("raw_analysis", "")
+            logger.info(f"[FIXBUGS] Extracted fixed code: {len(fixed_code)} chars")
             
             # Clean up the response - extract just the code
             if "```" in fixed_code:
@@ -889,10 +929,11 @@ Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs`
                 code_blocks = re.findall(r'```(?:\w+)?\n(.*?)```', fixed_code, re.DOTALL)
                 if code_blocks:
                     fixed_code = code_blocks[0]
+                    logger.info(f"[FIXBUGS] Extracted from code block: {len(fixed_code)} chars")
             
             # Validate we have actual code
             if not fixed_code or len(fixed_code) < 10:
-                logger.warning(f"[FIXBUGS] Generated code too short for {file_path}")
+                logger.warning(f"[FIXBUGS] Generated code too short for {file_path}: '{fixed_code[:100] if fixed_code else 'empty'}'")
                 files_failed.append({"file": file_path, "reason": "Generated code too short"})
                 continue
             
@@ -901,6 +942,7 @@ Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs`
                 [f"- {b.category}: {b.description[:50]}..." for b in file_bugs]
             )
             
+            logger.info(f"[FIXBUGS] Committing fix to {file_path}...")
             github_client.update_file_in_pr(
                 repo_url=repo_full_name,
                 pr_number=pr_number,
