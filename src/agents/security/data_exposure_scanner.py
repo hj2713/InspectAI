@@ -17,11 +17,12 @@ class DataExposureScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
-        """Analyze code for data exposure risks.
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+        """Analyze code for sensitive data exposure.
         
         Args:
             code: Python source code to analyze
+            context: Optional additional context for the analysis (e.g., file path, surrounding code)
             
         Returns:
             List of Finding objects related to data exposure

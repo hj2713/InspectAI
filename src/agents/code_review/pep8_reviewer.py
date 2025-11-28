@@ -17,14 +17,6 @@ class PEP8Reviewer(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
-        """Analyze code for PEP 8 style guide violations.
-        
-        Args:
-            code: Python source code to analyze
-            
-        Returns:
-            List of Finding objects related to PEP 8 compliance
         """
         system_prompt = {
             "role": "system",

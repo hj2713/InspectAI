@@ -47,6 +47,16 @@ class OrchestratorAgent:
         self.shared_memory = SharedMemory()
         self.logger = AgentLogger("orchestrator")
         self._executor = ThreadPoolExecutor(max_workers=4)
+        
+        # Initialize Vector Store for long-term memory
+        try:
+            from ..memory.vector_store import VectorStore
+            self.vector_store = VectorStore()
+            logger.info("Vector Store initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Vector Store: {e}. Running without long-term memory.")
+            self.vector_store = None
+            
         self._initialize_agents()
     
     def _initialize_agents(self) -> None:
@@ -372,13 +382,33 @@ class OrchestratorAgent:
                     "deletions": pr_file.deletions
                 }
                 
+                # Extract repo_id for Vector Store
+                repo_id = repo_url.replace("https://github.com/", "").replace("http://github.com/", "").strip("/")
+                
+                # Retrieve context from Vector Store
+                context = None
+                if self.vector_store:
+                    try:
+                        # Search for relevant context for this PR/Repo
+                        # For now, we just get general context. In future, we can be more specific.
+                        results = self.vector_store.search(
+                            query=f"Context for PR #{pr_number} in {repo_id}",
+                            repo_id=repo_id,
+                            n_results=3
+                        )
+                        if results:
+                            context = "\n".join([r["content"] for r in results])
+                            logger.info(f"Retrieved {len(results)} context items from Vector Store")
+                    except Exception as e:
+                        logger.warning(f"Failed to retrieve context: {e}")
+
                 # Only analyze code files
                 if self._is_code_file(pr_file.filename):
                     logger.info(f"Analyzing {pr_file.filename}...")
                     
-                    file_review["analysis"] = self.agents["analysis"].process(content)
-                    file_review["bugs"] = self.agents["bug_detection"].process(content)
-                    file_review["security"] = self.agents["security"].process(content)
+                    file_review["analysis"] = self.agents["analysis"].process(content, context=context)
+                    file_review["bugs"] = self.agents["bug_detection"].process(content, context=context)
+                    file_review["security"] = self.agents["security"].process(content, context=context)
                 
                 results["file_reviews"].append(file_review)
             

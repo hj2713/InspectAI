@@ -24,7 +24,7 @@ def get_provider() -> str:
     Priority:
     1. Environment variable LLM_PROVIDER
     2. Config file DEFAULT_PROVIDER
-    3. Fallback to "bytez"
+    3. Fallback to "gemini"
     
     Returns:
         Provider name ("openai", "bytez", or "gemini")
@@ -38,13 +38,13 @@ def get_provider() -> str:
     try:
         from config.default_config import DEFAULT_PROVIDER
         provider = DEFAULT_PROVIDER.lower()
-        # Map "local" to "bytez" since local uses Bytez API
+        # Map "local" to "gemini" as fallback
         if provider == "local":
-            return "bytez"
-        return provider if provider in ["openai", "bytez", "gemini"] else "bytez"
+            return "gemini"
+        return provider if provider in ["openai", "bytez", "gemini"] else "gemini"
     except ImportError:
-        # Ultimate fallback - use Bytez
-        return "bytez"
+        # Ultimate fallback - use Gemini
+        return "gemini"
 
 
 def get_model_name(provider: Optional[str] = None) -> str:

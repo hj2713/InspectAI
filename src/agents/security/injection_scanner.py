@@ -17,7 +17,7 @@ class InjectionScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
         """Analyze code for injection vulnerabilities.
         
         Args:

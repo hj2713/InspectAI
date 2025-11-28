@@ -21,11 +21,12 @@ class RuntimeIssueDetector(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
-        """Analyze code for runtime and performance issues.
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+        """Analyze code for potential runtime issues.
         
         Args:
             code: Python source code to analyze
+            context: Optional additional context for analysis (e.g., related code, environment details)
             
         Returns:
             List of Finding objects related to runtime issues

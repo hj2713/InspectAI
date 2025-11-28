@@ -114,14 +114,20 @@ async def process_pr_review(
     try:
         # Initialize orchestrator
         config = copy.deepcopy(ORCHESTRATOR_CONFIG)
-        provider = os.getenv("LLM_PROVIDER", "bytez")
+        from config.default_config import DEFAULT_PROVIDER, GEMINI_MODEL, BYTEZ_MODEL, OPENAI_MODEL
+        provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER)
+        
+        # Set model based on provider
+        model_map = {
+            "gemini": GEMINI_MODEL,
+            "bytez": BYTEZ_MODEL,
+            "openai": OPENAI_MODEL
+        }
         
         for key in config:
             if isinstance(config[key], dict):
                 config[key]["provider"] = provider
-                if provider == "bytez":
-                    from config.default_config import BYTEZ_MODEL
-                    config[key]["model"] = BYTEZ_MODEL
+                config[key]["model"] = model_map.get(provider, GEMINI_MODEL)
         
         orchestrator = OrchestratorAgent(config)
         
@@ -193,11 +199,20 @@ async def handle_agent_command(
         
         # Initialize orchestrator with configured provider
         config = copy.deepcopy(ORCHESTRATOR_CONFIG)
-        provider = os.getenv("LLM_PROVIDER", "local")
+        from config.default_config import DEFAULT_PROVIDER, GEMINI_MODEL, BYTEZ_MODEL, OPENAI_MODEL
+        provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER)
+        
+        # Set model based on provider
+        model_map = {
+            "gemini": GEMINI_MODEL,
+            "bytez": BYTEZ_MODEL,
+            "openai": OPENAI_MODEL
+        }
         
         for key in config:
             if isinstance(config[key], dict):
                 config[key]["provider"] = provider
+                config[key]["model"] = model_map.get(provider, GEMINI_MODEL)
         
         orchestrator = OrchestratorAgent(config)
         

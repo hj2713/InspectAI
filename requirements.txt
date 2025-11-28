@@ -39,3 +39,6 @@ bytez>=0.0.0
 # GitHub App authentication
 PyJWT>=2.8.0
 cryptography>=41.0.0
+
+# Vector Database
+chromadb>=0.4.0

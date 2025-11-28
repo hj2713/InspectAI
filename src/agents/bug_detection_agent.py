@@ -45,11 +45,12 @@ class BugDetectionAgent(BaseAgent):
         )
         logger.info(f"[BugDetectionAgent] Filter pipeline created with confidence_threshold={confidence_threshold}")
     
-    def process(self, code: str) -> Dict[str, Any]:
+    def process(self, code: str, context: str = None) -> Dict[str, Any]:
         """Analyze code using all bug detection sub-agents in parallel.
         
         Args:
             code: Source code to analyze
+            context: Optional context from vector store
             
         Returns:
             Dict containing filtered bug findings from all sub-agents
@@ -62,7 +63,7 @@ class BugDetectionAgent(BaseAgent):
         # Run sub-agents in parallel
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_agent = {
-                executor.submit(agent.analyze, code): name
+                executor.submit(agent.analyze, code, context): name
                 for name, agent in self.sub_agents.items()
             }
             

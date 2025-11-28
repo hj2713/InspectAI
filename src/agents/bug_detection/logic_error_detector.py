@@ -21,11 +21,12 @@ class LogicErrorDetector(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
         """Analyze code for logic errors.
         
         Args:
             code: Python source code to analyze
+            context: Optional context string for analysis (e.g., related code, problem description)
             
         Returns:
             List of Finding objects related to logic errors

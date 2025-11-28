@@ -89,11 +89,12 @@ class SpecializedAgent(ABC):
         logger.info(f"[{self.__class__.__name__}] LLM client initialized: {type(self.client).__name__}")
     
     @abstractmethod
-    def analyze(self, code: str) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
         """Analyze code and return a list of findings.
         
         Args:
             code: Source code to analyze
+            context: Optional context from vector store (e.g. related files, past reviews)
             
         Returns:
             List of Finding objects

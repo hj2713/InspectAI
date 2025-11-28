@@ -36,11 +36,12 @@ class CodeAnalysisAgent(BaseAgent):
             strict_evidence=False
         )
     
-    def process(self, code: str) -> Dict[str, Any]:
+    def process(self, code: str, context: str = None) -> Dict[str, Any]:
         """Analyze code using all sub-agents in parallel.
         
         Args:
             code: Source code to analyze
+            context: Optional context from vector store
             
         Returns:
             Dict containing filtered findings from all sub-agents
@@ -50,7 +51,7 @@ class CodeAnalysisAgent(BaseAgent):
         # Run sub-agents in parallel
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_agent = {
-                executor.submit(agent.analyze, code): name
+                executor.submit(agent.analyze, code, context): name
                 for name, agent in self.sub_agents.items()
             }
             

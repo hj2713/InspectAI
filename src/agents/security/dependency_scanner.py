@@ -17,11 +17,12 @@ class DependencyScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
-        """Analyze code for dependency security issues.
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+        """Analyze code for insecure dependencies.
         
         Args:
             code: Python source code to analyze
+            context: Optional[str]: Additional context or description of the code.
             
         Returns:
             List of Finding objects related to dependency issues

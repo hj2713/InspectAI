@@ -80,13 +80,20 @@ def get_orchestrator():
         if "documentation" not in config:
             config["documentation"] = {"model": "gpt-4", "temperature": 0.3, "max_tokens": 2048}
         
-        provider = os.getenv("LLM_PROVIDER", "bytez")
+        from config.default_config import DEFAULT_PROVIDER, GEMINI_MODEL, BYTEZ_MODEL, OPENAI_MODEL
+        provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER)
+        
+        # Set model based on provider
+        model_map = {
+            "gemini": GEMINI_MODEL,
+            "bytez": BYTEZ_MODEL,
+            "openai": OPENAI_MODEL
+        }
+        
         for key in config:
             if isinstance(config[key], dict):
                 config[key]["provider"] = provider
-                if provider == "bytez":
-                    from config.default_config import BYTEZ_MODEL
-                    config[key]["model"] = BYTEZ_MODEL
+                config[key]["model"] = model_map.get(provider, GEMINI_MODEL)
         
         _orchestrator = OrchestratorAgent(config)
     

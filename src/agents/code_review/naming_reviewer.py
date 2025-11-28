@@ -17,11 +17,12 @@ class NamingReviewer(SpecializedAgent):
         cfg = self.config or {}
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str) -> List[Finding]:
-        """Analyze code for naming convention issues.
+    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+        """Analyze code for naming convention violations.
         
         Args:
             code: Python source code to analyze
+            context: Optional additional context for analysis (e.g., file path, project info)
             
         Returns:
             List of Finding objects related to naming
