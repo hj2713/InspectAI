@@ -54,43 +54,44 @@ jobs:
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.SERVICE_ACCOUNT }}
-          token_format: 'id_token'
-          id_token_audience: ${{ env.CLOUD_RUN_URL }}
-          id_token_include_email: true
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Call Cloud Run Webhook
         run: |
-          # Construct the webhook payload matching GitHub's format
-          PAYLOAD=$(cat << 'EOF'
-          {
-            "action": "created",
-            "issue": {
-              "number": ${{ github.event.issue.number }},
-              "pull_request": {
-                "url": "${{ github.event.issue.pull_request.url }}"
-              }
-            },
-            "comment": {
-              "body": "${{ github.event.comment.body }}",
-              "user": {
-                "login": "${{ github.event.comment.user.login }}",
-                "type": "${{ github.event.comment.user.type }}"
-              }
-            },
-            "repository": {
-              "full_name": "${{ github.repository }}"
-            },
-            "installation": {
-              "id": null
-            }
-          }
-          EOF
-          )
+          # Get identity token for Cloud Run
+          ID_TOKEN=$(gcloud auth print-identity-token --audiences="${{ env.CLOUD_RUN_URL }}")
           
           echo "📤 Calling Cloud Run webhook..."
+          echo "Token received: ${ID_TOKEN:0:20}..."
           
-          # Get the identity token for Cloud Run
-          ID_TOKEN="${{ steps.auth.outputs.id_token }}"
+          # Construct the webhook payload matching GitHub's format
+          # Using jq to properly escape the comment body
+          COMMENT_BODY=$(echo '${{ github.event.comment.body }}' | jq -Rs .)
+          
+          PAYLOAD=$(jq -n \
+            --argjson issue_number "${{ github.event.issue.number }}" \
+            --arg pr_url "${{ github.event.issue.pull_request.url }}" \
+            --arg comment_body "${{ github.event.comment.body }}" \
+            --arg user_login "${{ github.event.comment.user.login }}" \
+            --arg user_type "${{ github.event.comment.user.type }}" \
+            --arg repo "${{ github.repository }}" \
+            '{
+              action: "created",
+              issue: {
+                number: $issue_number,
+                pull_request: { url: $pr_url }
+              },
+              comment: {
+                body: $comment_body,
+                user: { login: $user_login, type: $user_type }
+              },
+              repository: { full_name: $repo },
+              installation: { id: null }
+            }')
+          
+          echo "Payload: ${PAYLOAD}"
           
           # Call the webhook endpoint
           RESPONSE=$(curl -s -w "\n%{http_code}" \
