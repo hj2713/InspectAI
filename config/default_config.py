@@ -31,37 +31,37 @@ GEMINI_MODEL = "gemini-2.0-flash"  # Fast, capable, no thinking tokens overhead
 ORCHESTRATOR_CONFIG = {
     "research": {
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": 10000,
         "confidence_threshold": 0.5
     },
     "analysis": {
         "temperature": 0.2,
-        "max_tokens": 4096,
+        "max_tokens": 10000,
         "confidence_threshold": 0.5  # For code review findings
     },
     "generation": {
         "temperature": 0.3,
-        "max_tokens": 8192,
+        "max_tokens": 16000,
         "confidence_threshold": 0.5
     },
     "bug_detection": {
         "temperature": 0.1,
-        "max_tokens": 4096,
+        "max_tokens": 10000,
         "confidence_threshold": 0.6  # Higher threshold for bug findings
     },
     "security": {
         "temperature": 0.1,
-        "max_tokens": 4096,
+        "max_tokens": 10000,
         "confidence_threshold": 0.65  # Highest threshold for security findings
     },
     "test_generation": {
         "temperature": 0.3,
-        "max_tokens": 8192,
+        "max_tokens": 16000,
         "confidence_threshold": 0.5
     },
     "documentation": {
         "temperature": 0.3,
-        "max_tokens": 8192,
+        "max_tokens": 16000,
         "confidence_threshold": 0.5
     }
 }
