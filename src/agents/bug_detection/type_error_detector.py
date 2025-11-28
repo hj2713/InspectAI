@@ -4,7 +4,11 @@ This agent focuses on type mismatches, missing type hints, incorrect type usage,
 and type-related bugs in Python code.
 """
 from typing import List
+import logging
 from ..specialized_agent import SpecializedAgent, Finding
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class TypeErrorDetector(SpecializedAgent):
@@ -26,6 +30,8 @@ class TypeErrorDetector(SpecializedAgent):
         Returns:
             List of Finding objects related to type errors
         """
+        logger.info(f"[TypeErrorDetector] Starting analysis on {len(code)} chars of code")
+        
         system_prompt = {
             "role": "system",
             "content": """You are an expert at finding type errors in Python. Analyze for type issues ONLY.
@@ -54,6 +60,8 @@ Only report actual type errors. If types are correct, respond with "No type erro
             "content": f"Analyze this Python code for type errors:\n\n```python\n{code}\n```"
         }
         
+        logger.info(f"[TypeErrorDetector] Sending request to LLM")
+        
         response = self.client.chat(
             [system_prompt, user_prompt],
             model=self.config.get("model"),
@@ -61,12 +69,17 @@ Only report actual type errors. If types are correct, respond with "No type erro
             max_tokens=self.config.get("max_tokens")
         )
         
+        logger.info(f"[TypeErrorDetector] LLM response length: {len(response)}")
+        logger.info(f"[TypeErrorDetector] LLM response preview:\n{response[:500]}")
+        
         # Check if no issues found
         if "no type errors" in response.lower() or "no errors found" in response.lower():
+            logger.info(f"[TypeErrorDetector] No type errors found (response contains 'no errors')")
             return []
         
         # Parse findings from response
         findings = self._parse_llm_response(response, code)
+        logger.info(f"[TypeErrorDetector] Parsed {len(findings)} findings")
         
         # Ensure all findings have correct category
         for finding in findings:

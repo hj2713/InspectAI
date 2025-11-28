@@ -4,6 +4,7 @@ This agent orchestrates multiple specialized sub-agents for comprehensive bug de
 """
 from typing import Any, Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
 
 from .base_agent import BaseAgent
 from .bug_detection.logic_error_detector import LogicErrorDetector
@@ -11,6 +12,9 @@ from .bug_detection.edge_case_analyzer import EdgeCaseAnalyzer
 from .bug_detection.type_error_detector import TypeErrorDetector
 from .bug_detection.runtime_issue_detector import RuntimeIssueDetector
 from .filter_pipeline import create_default_pipeline, Finding
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class BugDetectionAgent(BaseAgent):
@@ -20,6 +24,8 @@ class BugDetectionAgent(BaseAgent):
         """Initialize all bug detection sub-agents."""
         cfg = self.config or {}
         
+        logger.info(f"[BugDetectionAgent] Initializing with config: {cfg}")
+        
         # Initialize specialized sub-agents
         self.sub_agents = {
             "logic_errors": LogicErrorDetector(cfg),
@@ -28,6 +34,8 @@ class BugDetectionAgent(BaseAgent):
             "runtime_issues": RuntimeIssueDetector(cfg)
         }
         
+        logger.info(f"[BugDetectionAgent] Initialized {len(self.sub_agents)} sub-agents: {list(self.sub_agents.keys())}")
+        
         # Create filter pipeline with higher confidence threshold for bugs
         confidence_threshold = cfg.get("confidence_threshold", 0.6)
         self.filter_pipeline = create_default_pipeline(
@@ -35,6 +43,7 @@ class BugDetectionAgent(BaseAgent):
             similarity_threshold=85,
             strict_evidence=False
         )
+        logger.info(f"[BugDetectionAgent] Filter pipeline created with confidence_threshold={confidence_threshold}")
     
     def process(self, code: str) -> Dict[str, Any]:
         """Analyze code using all bug detection sub-agents in parallel.
@@ -45,6 +54,9 @@ class BugDetectionAgent(BaseAgent):
         Returns:
             Dict containing filtered bug findings from all sub-agents
         """
+        logger.info(f"[BugDetectionAgent] Processing code, length={len(code)}")
+        logger.info(f"[BugDetectionAgent] Code preview (first 500 chars):\n{code[:500]}")
+        
         all_findings: List[Finding] = []
         
         # Run sub-agents in parallel
@@ -58,15 +70,18 @@ class BugDetectionAgent(BaseAgent):
                 agent_name = future_to_agent[future]
                 try:
                     findings = future.result()
-                    print(f"{agent_name}: Found {len(findings)} bugs")
+                    logger.info(f"[BugDetectionAgent] {agent_name}: Found {len(findings)} bugs")
+                    for i, finding in enumerate(findings):
+                        logger.debug(f"[BugDetectionAgent] {agent_name} finding {i}: {finding.to_dict()}")
                     all_findings.extend(findings)
                 except Exception as e:
-                    print(f"Error in {agent_name}: {e}")
+                    logger.error(f"[BugDetectionAgent] Error in {agent_name}: {e}", exc_info=True)
         
-        print(f"\nTotal bugs before filtering: {len(all_findings)}")
+        logger.info(f"[BugDetectionAgent] Total bugs before filtering: {len(all_findings)}")
         
         # Apply filter pipeline
         filtered_findings = self.filter_pipeline.process(all_findings)
+        logger.info(f"[BugDetectionAgent] Total bugs after filtering: {len(filtered_findings)}")
         
         # Convert to structured bug format
         bugs = []
@@ -77,7 +92,7 @@ class BugDetectionAgent(BaseAgent):
         # Generate analysis summary
         analysis_summary = self._generate_summary(filtered_findings)
         
-        return {
+        result = {
             "status": "ok",
             "raw_analysis": analysis_summary,
             "bugs": bugs,
@@ -85,6 +100,9 @@ class BugDetectionAgent(BaseAgent):
             "bugs_by_severity": self._group_by_severity(filtered_findings),
             "bugs_by_category": self._group_by_category(filtered_findings)
         }
+        
+        logger.info(f"[BugDetectionAgent] Returning result with {result['bug_count']} bugs")
+        return result
     
     def _generate_summary(self, findings: List[Finding]) -> str:
         """Generate a text summary of bug findings."""

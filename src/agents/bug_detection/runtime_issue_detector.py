@@ -4,7 +4,11 @@ This agent focuses on resource leaks, performance issues, and runtime problems
 that don't cause immediate crashes but affect program execution.
 """
 from typing import List
+import logging
 from ..specialized_agent import SpecializedAgent, Finding
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class RuntimeIssueDetector(SpecializedAgent):
@@ -26,6 +30,8 @@ class RuntimeIssueDetector(SpecializedAgent):
         Returns:
             List of Finding objects related to runtime issues
         """
+        logger.info(f"[RuntimeIssueDetector] Starting analysis on {len(code)} chars of code")
+        
         system_prompt = {
             "role": "system",
             "content": """You are an expert at finding runtime and performance issues. Analyze for runtime problems ONLY.
@@ -54,6 +60,8 @@ Only report actual runtime issues. If code is efficient, respond with "No runtim
             "content": f"Analyze this Python code for runtime issues:\n\n```python\n{code}\n```"
         }
         
+        logger.info(f"[RuntimeIssueDetector] Sending request to LLM")
+        
         response = self.client.chat(
             [system_prompt, user_prompt],
             model=self.config.get("model"),
@@ -61,12 +69,17 @@ Only report actual runtime issues. If code is efficient, respond with "No runtim
             max_tokens=self.config.get("max_tokens")
         )
         
+        logger.info(f"[RuntimeIssueDetector] LLM response length: {len(response)}")
+        logger.info(f"[RuntimeIssueDetector] LLM response preview:\n{response[:500]}")
+        
         # Check if no issues found
         if "no runtime issues" in response.lower() or "no issues found" in response.lower():
+            logger.info(f"[RuntimeIssueDetector] No runtime issues found (response contains 'no issues')")
             return []
         
         # Parse findings from response
         findings = self._parse_llm_response(response, code)
+        logger.info(f"[RuntimeIssueDetector] Parsed {len(findings)} findings")
         
         # Ensure all findings have correct category
         for finding in findings:

@@ -211,22 +211,32 @@ async def handle_agent_command(
             
             for pr_file in pr.files:
                 if pr_file.status == "removed":
+                    logger.debug(f"Skipping removed file: {pr_file.filename}")
                     continue
                 
                 # Only analyze code files
                 if not orchestrator._is_code_file(pr_file.filename):
+                    logger.debug(f"Skipping non-code file: {pr_file.filename}")
                     continue
                 
                 try:
                     content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
-                    logger.info(f"Analyzing {pr_file.filename}...")
+                    logger.info(f"Analyzing {pr_file.filename} ({len(content)} bytes)...")
+                    logger.info(f"File content preview:\n{content[:300]}...")
                     
                     # Run analysis based on command
                     if command == "review":
                         # Full review: all 12 agents
+                        logger.info(f"Running full review on {pr_file.filename}")
                         analysis = orchestrator.agents["analysis"].process(content)
+                        logger.info(f"Analysis complete: {len(analysis.get('suggestions', []))} suggestions")
+                        
                         bugs = orchestrator.agents["bug_detection"].process(content)
+                        logger.info(f"Bug detection complete: {bugs.get('bug_count', 0)} bugs found")
+                        logger.info(f"Bug detection raw result: {bugs}")
+                        
                         security = orchestrator.agents["security"].process(content)
+                        logger.info(f"Security analysis complete: {security.get('vulnerability_count', 0)} vulnerabilities")
                         
                         # Collect findings
                         for s in analysis.get("suggestions", []):
@@ -238,6 +248,7 @@ async def handle_agent_command(
                             if isinstance(b, dict):
                                 b["file"] = pr_file.filename
                                 all_findings.append(b)
+                                logger.info(f"Added bug finding: {b}")
                         
                         for v in security.get("vulnerabilities", []):
                             if isinstance(v, dict):
@@ -246,7 +257,10 @@ async def handle_agent_command(
                     
                     elif command == "bugs":
                         # Bug detection only
+                        logger.info(f"Running bug detection only on {pr_file.filename}")
                         bugs = orchestrator.agents["bug_detection"].process(content)
+                        logger.info(f"Bug detection complete: {bugs.get('bug_count', 0)} bugs, raw: {bugs}")
+                        
                         for b in bugs.get("bugs", []):
                             if isinstance(b, dict):
                                 b["file"] = pr_file.filename
@@ -261,10 +275,13 @@ async def handle_agent_command(
                                 all_findings.append(s)
                     
                     files_analyzed += 1
+                    logger.info(f"Completed analysis of {pr_file.filename}, total findings so far: {len(all_findings)}")
                     
                 except Exception as e:
-                    logger.error(f"Failed to analyze {pr_file.filename}: {e}")
+                    logger.error(f"Failed to analyze {pr_file.filename}: {e}", exc_info=True)
                     continue
+            
+            logger.info(f"All files analyzed. Total findings: {len(all_findings)}")
             
             # Generate summary comment
             message = _format_findings_message(

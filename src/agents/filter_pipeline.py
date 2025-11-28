@@ -6,8 +6,12 @@ validate evidence to reduce hallucinations.
 """
 from typing import List, Dict, Any, Callable
 from abc import ABC, abstractmethod
+import logging
 from fuzzywuzzy import fuzz
 from .specialized_agent import Finding
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class BaseFilter(ABC):
@@ -55,7 +59,10 @@ class ConfidenceFilter(BaseFilter):
         # Log filtered count for debugging
         if len(filtered) < len(findings):
             removed = len(findings) - len(filtered)
-            print(f"ConfidenceFilter: Removed {removed} findings below threshold {self.threshold}")
+            logger.info(f"[ConfidenceFilter] Removed {removed} findings below threshold {self.threshold}")
+            for f in findings:
+                if f.confidence < self.threshold:
+                    logger.debug(f"[ConfidenceFilter] Removed: {f.category} - {f.description[:50]}... (confidence={f.confidence})")
         
         return filtered
 
@@ -112,7 +119,7 @@ class DeduplicationFilter(BaseFilter):
         
         removed = len(findings) - len(unique_findings)
         if removed > 0:
-            print(f"DeduplicationFilter: Removed {removed} duplicate findings")
+            logger.info(f"[DeduplicationFilter] Removed {removed} duplicate findings")
         
         return unique_findings
 
@@ -166,7 +173,7 @@ class HallucinationFilter(BaseFilter):
         
         removed = len(findings) - len(filtered)
         if removed > 0:
-            print(f"HallucinationFilter: Removed {removed} findings without evidence")
+            logger.info(f"[HallucinationFilter] Removed {removed} findings without evidence")
         
         return filtered
 
@@ -208,7 +215,7 @@ class SeverityFilter(BaseFilter):
         
         removed = len(findings) - len(filtered)
         if removed > 0:
-            print(f"SeverityFilter: Removed {removed} findings below {self.min_severity}")
+            logger.info(f"[SeverityFilter] Removed {removed} findings below {self.min_severity}")
         
         return filtered
 
@@ -247,12 +254,14 @@ class FilterPipeline:
         """
         result = findings
         
-        print(f"\nFilterPipeline: Starting with {len(result)} findings")
+        logger.info(f"[FilterPipeline] Starting with {len(result)} findings")
         
         for filter_instance in self.filters:
+            before_count = len(result)
             result = filter_instance.filter(result)
+            logger.info(f"[FilterPipeline] After {filter_instance.__class__.__name__}: {before_count} -> {len(result)}")
         
-        print(f"FilterPipeline: Ended with {len(result)} findings\n")
+        logger.info(f"[FilterPipeline] Ended with {len(result)} findings")
         
         return result
     

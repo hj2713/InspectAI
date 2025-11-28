@@ -7,6 +7,10 @@ structured findings with confidence scores and evidence.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
+import logging
+
+# Set up logger for specialized agents
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -80,7 +84,9 @@ class SpecializedAgent(ABC):
         from ..llm import get_llm_client_from_config
         
         cfg = self.config or {}
+        logger.info(f"[{self.__class__.__name__}] Initializing with config: {cfg}")
         self.client = get_llm_client_from_config(cfg)
+        logger.info(f"[{self.__class__.__name__}] LLM client initialized: {type(self.client).__name__}")
     
     @abstractmethod
     def analyze(self, code: str) -> List[Finding]:
@@ -135,6 +141,9 @@ class SpecializedAgent(ABC):
         Returns:
             List of Finding objects
         """
+        logger.info(f"[{self.__class__.__name__}] Parsing LLM response, length={len(response)}")
+        logger.info(f"[{self.__class__.__name__}] LLM response (first 1000 chars):\n{response[:1000]}")
+        
         findings = []
         current_finding = {}
         
@@ -142,6 +151,7 @@ class SpecializedAgent(ABC):
             line = line.strip()
             if not line:
                 if current_finding and "category" in current_finding:
+                    logger.debug(f"[{self.__class__.__name__}] Creating finding from: {current_finding}")
                     findings.append(self._create_finding_from_dict(current_finding, code))
                     current_finding = {}
                 continue
@@ -151,6 +161,8 @@ class SpecializedAgent(ABC):
                 key, value = line.split(":", 1)
                 key = key.strip().lower()
                 value = value.strip()
+                
+                logger.debug(f"[{self.__class__.__name__}] Parsed line - key='{key}', value='{value[:50] if len(value) > 50 else value}'")
                 
                 if key in ["category", "type"]:
                     current_finding["category"] = value
@@ -170,7 +182,12 @@ class SpecializedAgent(ABC):
         
         # Don't forget last finding
         if current_finding and "category" in current_finding:
+            logger.debug(f"[{self.__class__.__name__}] Creating last finding from: {current_finding}")
             findings.append(self._create_finding_from_dict(current_finding, code))
+        
+        logger.info(f"[{self.__class__.__name__}] Parsing complete. Found {len(findings)} findings")
+        if not findings:
+            logger.warning(f"[{self.__class__.__name__}] NO FINDINGS PARSED! Full response:\n{response}")
         
         return findings
     

@@ -4,7 +4,11 @@ This agent focuses on off-by-one errors, infinite loops, incorrect algorithms,
 and flawed logic in code.
 """
 from typing import List
+import logging
 from ..specialized_agent import SpecializedAgent, Finding
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class LogicErrorDetector(SpecializedAgent):
@@ -26,6 +30,8 @@ class LogicErrorDetector(SpecializedAgent):
         Returns:
             List of Finding objects related to logic errors
         """
+        logger.info(f"[LogicErrorDetector] Starting analysis on {len(code)} chars of code")
+        
         system_prompt = {
             "role": "system",
             "content": """You are an expert at finding logic errors in code. Analyze for logic bugs ONLY.
@@ -54,6 +60,8 @@ Only report actual logic errors. If logic appears correct, respond with "No logi
             "content": f"Analyze this Python code for logic errors:\n\n```python\n{code}\n```"
         }
         
+        logger.info(f"[LogicErrorDetector] Sending request to LLM")
+        
         response = self.client.chat(
             [system_prompt, user_prompt],
             model=self.config.get("model"),
@@ -61,12 +69,17 @@ Only report actual logic errors. If logic appears correct, respond with "No logi
             max_tokens=self.config.get("max_tokens")
         )
         
+        logger.info(f"[LogicErrorDetector] LLM response length: {len(response)}")
+        logger.info(f"[LogicErrorDetector] LLM response preview:\n{response[:500]}")
+        
         # Check if no issues found
         if "no logic errors" in response.lower() or "no errors found" in response.lower():
+            logger.info(f"[LogicErrorDetector] No logic errors found (response contains 'no errors')")
             return []
         
         # Parse findings from response
         findings = self._parse_llm_response(response, code)
+        logger.info(f"[LogicErrorDetector] Parsed {len(findings)} findings")
         
         # Ensure all findings have correct category and severity
         for finding in findings:

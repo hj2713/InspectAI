@@ -13,6 +13,7 @@ Or directly:
     uvicorn src.api.server:app --reload
 """
 import os
+import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +23,11 @@ from pydantic import BaseModel, Field
 
 # Import webhook router
 from src.api.webhooks import router as webhook_router
+from src.utils.logger import setup_logging
+
+# Initialize logging at module load time
+setup_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
+logger = logging.getLogger(__name__)
 
 # Global orchestrator instance
 _orchestrator = None
