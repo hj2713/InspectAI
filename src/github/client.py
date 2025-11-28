@@ -208,18 +208,46 @@ class GitHubClient:
         Returns:
             GitHubClient instance authenticated for the installation
         """
+        import base64
+        
         app_id = os.getenv("GITHUB_APP_ID")
         private_key_raw = os.getenv("GITHUB_APP_PRIVATE_KEY", "")
         
-        # Load private key
-        if os.path.isfile(private_key_raw):
+        logger.debug(f"GITHUB_APP_ID: {app_id}")
+        logger.debug(f"GITHUB_APP_PRIVATE_KEY length: {len(private_key_raw)}")
+        logger.debug(f"GITHUB_APP_PRIVATE_KEY first 50 chars: {private_key_raw[:50] if private_key_raw else 'EMPTY'}")
+        
+        # Load private key - try multiple formats
+        private_key = None
+        
+        # Option 1: Check if it's a file path
+        if private_key_raw and os.path.isfile(private_key_raw):
+            logger.info("Loading private key from file path")
             with open(private_key_raw, "r") as f:
                 private_key = f.read()
-        elif "BEGIN" in private_key_raw:
-            private_key = private_key_raw.replace("\\n", "\n")
-        else:
+        
+        # Option 2: Check if it's base64 encoded
+        elif private_key_raw and "BEGIN" not in private_key_raw:
+            try:
+                decoded = base64.b64decode(private_key_raw).decode('utf-8')
+                if "BEGIN" in decoded:
+                    logger.info("Loaded private key from base64")
+                    private_key = decoded
+            except Exception as e:
+                logger.debug(f"Not base64 encoded: {e}")
+        
+        # Option 3: Direct key content (handle escaped newlines)
+        if not private_key and private_key_raw:
+            # Replace escaped newlines with actual newlines
+            key = private_key_raw.replace("\\n", "\n")
+            if "BEGIN" in key:
+                logger.info("Loaded private key from direct content")
+                private_key = key
+        
+        if not private_key:
             raise ValueError(
-                "GITHUB_APP_PRIVATE_KEY must be set to either the key content or path to .pem file"
+                "GITHUB_APP_PRIVATE_KEY must be set to either the key content, base64-encoded key, or path to .pem file. "
+                f"Got value starting with: {private_key_raw[:30] if private_key_raw else 'EMPTY'}..."
             )
         
         if not app_id:
