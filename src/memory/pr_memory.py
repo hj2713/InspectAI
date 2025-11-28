@@ -120,8 +120,6 @@ class PRMemoryManager:
             Number of findings stored
         """
         repo_id = self._get_repo_id(repo_full_name, pr_number)
-        logger.info(f"[PR_MEMORY] store_bug_findings called for {repo_id} with {len(findings)} findings")
-        logger.info(f"[PR_MEMORY] Using VectorStore: {self.vector_store is not None}")
         
         # Clear previous findings first - only keep latest
         self.clear_bug_findings(repo_full_name, pr_number)
@@ -342,11 +340,6 @@ class PRMemoryManager:
         repo_full_name: str,
         pr_number: int
     ) -> List[str]:
-        """Get list of files that have been analyzed for this PR.
-        
-        Returns:
-            List of file paths
-        """
         repo_id = self._get_repo_id(repo_full_name, pr_number)
         
         if self.vector_store:
@@ -381,13 +374,8 @@ class PRMemoryManager:
             True if cleanup successful
         """
         repo_id = self._get_repo_id(repo_full_name, pr_number)
-        
-        if self.vector_store:
-            return self.vector_store.delete_repo_data(repo_id)
-        else:
-            if repo_id in self._memory_fallback:
-                del self._memory_fallback[repo_id]
-            return True
+        return self.vector_store.delete_repo_data(repo_id)
+
 
 
 # Global instance for reuse

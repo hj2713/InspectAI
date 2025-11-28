@@ -53,9 +53,6 @@ def get_config(provider: str = None) -> Dict[str, Any]:
 
 def demo_code_improvement():
     """Demo: Code improvement task."""
-    logger.info("=" * 60)
-    logger.info("Demo: Code Improvement")
-    logger.info("=" * 60)
     
     code = """
 def calculate_average(numbers):
@@ -90,10 +87,6 @@ def calculate_average(numbers):
 
 
 def demo_full_review():
-    """Demo: Full review task."""
-    logger.info("=" * 60)
-    logger.info("Demo: Full Review")
-    logger.info("=" * 60)
     
     code = """
 def fetch_user(user_id):
@@ -139,12 +132,6 @@ def main():
     # Get provider from env
     provider = os.getenv("LLM_PROVIDER", "bytez")
     logger.info(f"Using LLM provider: {provider}")
-    
-    # Run demo
-    print("\n🤖 Multi-Agent Code Review System")
-    print("=" * 40)
-    print(f"Provider: {provider}")
-    print("=" * 40)
     
     demo_code_improvement()
 

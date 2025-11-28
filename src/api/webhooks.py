@@ -216,10 +216,6 @@ def get_diff_lines_for_file(patch: str) -> set:
         elif line.startswith('-') and not line.startswith('---'):
             # Deleted line - don't increment, not on new side
             pass
-        elif not line.startswith('\\'):  # Skip "\ No newline at end of file"
-            # Context line - also commentable in the diff
-            diff_lines.add(current_line)
-            current_line += 1
     
     return diff_lines
 

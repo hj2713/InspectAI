@@ -109,12 +109,6 @@ async def lifespan(app: FastAPI):
     
     # Startup
     yield
-    
-    # Shutdown
-    global _orchestrator
-    if _orchestrator:
-        _orchestrator.cleanup()
-        _orchestrator = None
 
 
 def create_app() -> FastAPI:
@@ -186,11 +180,7 @@ def create_app() -> FastAPI:
                     await asyncio.sleep(300)  # Retry after 5 mins on error
 
         asyncio.create_task(cleanup_loop())
-    
-    @app.get("/health")
-    async def health():
-        """Health check endpoint."""
-        return {"status": "healthy"}
+
     
     @app.post("/review", response_model=TaskResponse)
     async def review_code(request: ReviewRequest):
