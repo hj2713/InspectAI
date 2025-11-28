@@ -1,4 +1,3 @@
-
 # Multi-Agent Code Review and Debugging Network
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -58,24 +57,29 @@ A sophisticated multi-agent system powered by Large Language Models (LLMs) for a
 ## 🛠️ Installation
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/Yeshitha-co/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network.git
 cd COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network
 ```
 
 ### 2. Create virtual environment
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 ### 3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. Configure environment variables
+
 Create a `.env` file in the project root:
+
 ```env
 # LLM Provider (openai, bytez, or local)
 LLM_PROVIDER=bytez
@@ -152,11 +156,13 @@ orchestrator.cleanup()
 ### REST API
 
 Start the server:
+
 ```bash
 python -m src.cli server --port 8000
 ```
 
 Endpoints:
+
 - `POST /review` - Review code
 - `POST /pr-review` - Review GitHub PR
 - `GET /tasks` - List available task types
@@ -164,6 +170,7 @@ Endpoints:
 - `GET /docs` - API documentation (Swagger UI)
 
 Example request:
+
 ```bash
 curl -X POST http://localhost:8000/review \
   -H "Content-Type: application/json" \
@@ -172,24 +179,26 @@ curl -X POST http://localhost:8000/review \
 
 ## 🤖 Supported Task Types
 
-| Task Type | Description |
-|-----------|-------------|
+| Task Type          | Description                       |
+| ------------------ | --------------------------------- |
 | `code_improvement` | General code quality improvements |
-| `bug_fix` | Bug detection and fixing |
-| `security_audit` | Security vulnerability analysis |
-| `test_generation` | Generate test cases |
-| `documentation` | Generate documentation |
-| `full_review` | Comprehensive review (all agents) |
-| `pr_review` | GitHub Pull Request review |
+| `bug_fix`          | Bug detection and fixing          |
+| `security_audit`   | Security vulnerability analysis   |
+| `test_generation`  | Generate test cases               |
+| `documentation`    | Generate documentation            |
+| `full_review`      | Comprehensive review (all agents) |
+| `pr_review`        | GitHub Pull Request review        |
 
 ## 📊 Logging
 
 Logs are stored in the `logs/` directory:
+
 - `app.log` - Main application logs (INFO+)
 - `debug.log` - Detailed debug logs
 - `error.log` - Errors only
 
 View logs:
+
 ```bash
 # Watch main logs
 tail -f logs/app.log
@@ -217,6 +226,7 @@ pytest tests/test_agents.py -v
 ## 🔧 Configuration
 
 Edit `config/default_config.py` to customize:
+
 - Model selection per agent
 - Temperature settings
 - Token limits
@@ -229,4 +239,4 @@ This project is part of COMSE6998-015 Fall 2025 coursework.
 ## 👥 Team
 
 - Yeshitha (Owner)
-- Contributors: [Add team members]
+- Himanshu Jhawar
