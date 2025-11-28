@@ -483,16 +483,18 @@ Only the **changed lines** in this PR were reviewed.
 ---
 *Use `/inspectai_bugs` to scan entire files for bugs.*
 """
+        # Merge comments on the same line
+        merged_comments = _merge_inline_comments(inline_comments)
         try:
             result = github_client.create_review(
                 repo_url=repo_full_name,
                 pr_number=pr_number,
                 body=summary,
                 event="COMMENT",
-                comments=inline_comments
+                comments=merged_comments
             )
-            logger.info(f"[REVIEW] Posted review with {len(inline_comments)} inline comments")
-            return {"status": "success", "review_id": result.get("id"), "comments": len(inline_comments)}
+            logger.info(f"[REVIEW] Posted review with {len(merged_comments)} inline comments")
+            return {"status": "success", "review_id": result.get("id"), "comments": len(merged_comments)}
         except Exception as e:
             logger.error(f"[REVIEW] Failed to post review: {e}")
             # Fallback to regular comment
@@ -669,15 +671,17 @@ async def _handle_bugs_command(
 """
     
     if inline_comments:
+        # Merge comments on the same line
+        merged_comments = _merge_inline_comments(inline_comments)
         try:
             result = github_client.create_review(
                 repo_url=repo_full_name,
                 pr_number=pr_number,
                 body=summary,
                 event="COMMENT",
-                comments=inline_comments[:50]  # GitHub limits to 50 comments per review
+                comments=merged_comments[:50]  # GitHub limits to 50 comments per review
             )
-            return {"status": "success", "bugs_found": len(all_bugs), "comments": len(inline_comments)}
+            return {"status": "success", "bugs_found": len(all_bugs), "comments": len(merged_comments)}
         except Exception as e:
             logger.error(f"[BUGS] Failed to post review: {e}")
             github_client.post_pr_comment(repo_full_name, pr_number, summary)
@@ -783,13 +787,15 @@ async def _handle_refactor_command(
 """
     
     if inline_comments:
+        # Merge comments on the same line
+        merged_comments = _merge_inline_comments(inline_comments)
         try:
             result = github_client.create_review(
                 repo_url=repo_full_name,
                 pr_number=pr_number,
                 body=summary,
                 event="COMMENT",
-                comments=inline_comments[:50]
+                comments=merged_comments[:50]
             )
             return {"status": "success", "suggestions": len(all_suggestions)}
         except Exception as e:
@@ -1016,6 +1022,47 @@ def _format_bug_comment(bug: BugFinding) -> str:
 *Confidence: {bug.confidence:.0%}*
 """
     return comment
+
+
+def _merge_inline_comments(comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Merge multiple comments on the same file+line into a single comment.
+    
+    GitHub doesn't allow multiple review comments on the same line,
+    so we combine them into one.
+    """
+    if not comments:
+        return []
+    
+    # Group by (path, line)
+    grouped: Dict[tuple, List[str]] = {}
+    comment_meta: Dict[tuple, Dict] = {}
+    
+    for comment in comments:
+        key = (comment["path"], comment["line"])
+        if key not in grouped:
+            grouped[key] = []
+            comment_meta[key] = {
+                "path": comment["path"],
+                "line": comment["line"],
+                "side": comment.get("side", "RIGHT")
+            }
+        grouped[key].append(comment["body"])
+    
+    # Merge bodies
+    merged = []
+    for key, bodies in grouped.items():
+        if len(bodies) == 1:
+            merged_body = bodies[0]
+        else:
+            # Combine multiple findings with separators
+            merged_body = "\n\n---\n\n".join(bodies)
+        
+        merged.append({
+            **comment_meta[key],
+            "body": merged_body
+        })
+    
+    return merged
 
 
 def _extract_code_snippet(content: str, line_number: int, context: int = 2) -> str:
