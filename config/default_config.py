@@ -22,7 +22,7 @@ OPENAI_MODEL = "gpt-4"  # or "gpt-3.5-turbo", "gpt-4-turbo", etc.
 BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Primary Bytez model
 
 # For Gemini (when DEFAULT_PROVIDER = "gemini")
-GEMINI_MODEL = "gemini-2.0-flash"  # or "gemini-1.5-pro", "gemini-1.5-flash", etc.
+GEMINI_MODEL = "gemini-2.5-pro"  # or "gemini-3-pro-preview", "gemini-1.5-flash", etc.
 
 # ===================================================================================
 # AGENT CONFIGURATIONS - These will automatically use DEFAULT_PROVIDER
