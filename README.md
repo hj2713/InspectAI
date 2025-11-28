@@ -18,6 +18,7 @@ A production-grade multi-agent system powered by **12 specialized AI agents** fo
 - **Parallel Execution**: 4x faster via ThreadPoolExecutor
 - **GitHub Integration**: Automated PR reviews with inline comments via GitHub App
 - **Multiple LLM Support**: Google Gemini (default), OpenAI, Bytez
+- **Multi-Tenant Vector Memory**: Context-aware analysis using ChromaDB with strict data isolation
 - **Web File Support**: Analyzes HTML, CSS, JSON, XML, and shell scripts
 - **Production Ready**: Deployed on Render with 24/7 availability
 
@@ -237,6 +238,8 @@ InspectAI/
 │   │   ├── client.py               # Unified LLM client (Gemini, OpenAI, Bytez)
 │   │   └── factory.py              # LLM Factory pattern (centralized provider selection)
 │   ├── memory/                     # Agent memory
+│   │   ├── agent_memory.py         # Short-term session memory
+│   │   └── vector_store.py         # Long-term Vector DB (ChromaDB)
 │   ├── api/                        # REST API & Webhooks
 │   └── utils/                      # Utilities
 ├── config/
@@ -303,15 +306,24 @@ Stateful execution with:
 - Supports: `/InspectAI_bugs`, `/InspectAI_security`, `/InspectAI_refactor`
 - Deployed on Render for 24/7 availability
 
+### 5. 🧠 Multi-Tenant Vector Memory
+
+A powerful context-aware memory system built on **ChromaDB**:
+
+- **Context-Aware Analysis**: Agents retrieve relevant context (e.g., project standards, similar code) before analyzing files.
+- **Strict Isolation**: Data is isolated by `repo_id` using metadata filtering, ensuring Project A never sees Project B's data.
+- **Local & Private**: Runs entirely locally using ChromaDB, with no data sent to external vector providers.
+- **Automatic Indexing**: Relevant code and documentation are automatically indexed for future retrieval.
+
 ---
 
 ## 🤖 Supported LLM Providers
 
-| Provider | Model | Best For | API Key Required |
-|----------|-------|----------|------------------|
-| **Gemini** (Default) | `gemini-2.0-flash` | Fast, cost-effective, great for code | `GEMINI_API_KEY` |
-| **OpenAI** | `gpt-4`, `gpt-4-turbo` | Highest quality, comprehensive analysis | `OPENAI_API_KEY` |
-| **Bytez** | `ibm-granite/granite-4.0-h-tiny` | Lightweight, specialized models | `BYTEZ_API_KEY` |
+| Provider             | Model                            | Best For                                | API Key Required |
+| -------------------- | -------------------------------- | --------------------------------------- | ---------------- |
+| **Gemini** (Default) | `gemini-2.0-flash`               | Fast, cost-effective, great for code    | `GEMINI_API_KEY` |
+| **OpenAI**           | `gpt-4`, `gpt-4-turbo`           | Highest quality, comprehensive analysis | `OPENAI_API_KEY` |
+| **Bytez**            | `ibm-granite/granite-4.0-h-tiny` | Lightweight, specialized models         | `BYTEZ_API_KEY`  |
 
 ### Switching Providers
 
