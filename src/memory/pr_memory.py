@@ -67,13 +67,47 @@ class PRMemoryManager:
         """Generate unique repo ID for isolation."""
         return f"{repo_full_name}#{pr_number}"
     
+    def clear_bug_findings(self, repo_full_name: str, pr_number: int) -> int:
+        """Clear all existing bug findings for a PR.
+        
+        This is called before storing new findings to ensure only the
+        latest /inspectai_bugs results are kept.
+        
+        Args:
+            repo_full_name: Repository name (owner/repo)
+            pr_number: Pull request number
+            
+        Returns:
+            Number of findings cleared
+        """
+        repo_id = self._get_repo_id(repo_full_name, pr_number)
+        
+        if self.vector_store:
+            deleted = self.vector_store.delete_by_filter(repo_id, "bug_finding")
+            logger.info(f"Cleared {deleted} old bug findings for {repo_id}")
+            return deleted
+        else:
+            # Fallback: clear in-memory storage
+            if repo_id in self._memory_fallback:
+                old_count = len([f for f in self._memory_fallback[repo_id] 
+                               if f.get("type") == "bug_finding"])
+                self._memory_fallback[repo_id] = [
+                    f for f in self._memory_fallback[repo_id] 
+                    if f.get("type") != "bug_finding"
+                ]
+                logger.info(f"Cleared {old_count} old bug findings for {repo_id}")
+                return old_count
+        return 0
+    
     def store_bug_findings(
         self,
         repo_full_name: str,
         pr_number: int,
         findings: List[BugFinding]
     ) -> int:
-        """Store bug findings for later use by refactor command.
+        """Store bug findings for later use by fixbugs command.
+        
+        NOTE: This clears ALL previous findings first to keep only the latest.
         
         Args:
             repo_full_name: Repository name (owner/repo)
@@ -84,6 +118,10 @@ class PRMemoryManager:
             Number of findings stored
         """
         repo_id = self._get_repo_id(repo_full_name, pr_number)
+        
+        # Clear previous findings first - only keep latest
+        self.clear_bug_findings(repo_full_name, pr_number)
+        
         stored_count = 0
         
         for finding in findings:

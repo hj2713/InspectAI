@@ -703,9 +703,9 @@ async def _handle_fixbugs_command(
     pr,
     comment_author: str
 ) -> Dict[str, Any]:
-    """Handle /inspectai_fixbugs - Auto-fixes bugs from memory.
+    """Handle /inspectai_fixbugs - Auto-fixes bugs and commits to PR.
     
-    Reads bugs stored by /inspectai_bugs and generates fix suggestions.
+    Reads bugs stored by /inspectai_bugs, generates fixes, and commits them.
     """
     logger.info(f"[FIXBUGS] Starting auto-fix for {repo_full_name}#{pr_number}")
     
@@ -736,95 +736,126 @@ Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs`
             bugs_by_file[bug.file_path] = []
         bugs_by_file[bug.file_path].append(bug)
     
-    fixes_generated = []
+    files_fixed = []
+    files_failed = []
     
     for file_path, file_bugs in bugs_by_file.items():
         try:
             # Get current file content
             content = github_client.get_pr_file_content(repo_full_name, pr_number, file_path)
             
-            # Build fix prompt
-            bug_descriptions = []
-            for i, bug in enumerate(file_bugs, 1):
-                bug_descriptions.append(f"""
-Bug {i} (Line {bug.line_number}, {bug.severity}):
+            # Build detailed fix prompt with all bug info
+            bug_descriptions = "\n".join([
+                f"""Bug {i} (Line {bug.line_number}, {bug.severity}):
 - Category: {bug.category}
 - Description: {bug.description}
 - Suggested Fix: {bug.fix_suggestion}
-- Code: {bug.code_snippet}
-""")
+- Code Snippet: {bug.code_snippet}"""
+                for i, bug in enumerate(file_bugs, 1)
+            ])
             
-            # Use code generation agent to generate fixes
-            fix_result = orchestrator.agents["generation"].process({
+            # Use code generation agent to generate fixed code
+            fix_prompt = {
                 "code": content,
+                "bugs": bug_descriptions,
                 "suggestions": [b.fix_suggestion for b in file_bugs],
-                "requirements": ["Fix all identified bugs", "Maintain code functionality"]
-            })
+                "requirements": [
+                    "Apply ALL the suggested fixes to the code",
+                    "Return ONLY the complete fixed code, no explanations",
+                    "Maintain the exact same structure and formatting",
+                    "Do not change anything that is not related to the bugs"
+                ]
+            }
             
-            fixes_generated.append({
+            fix_result = orchestrator.agents["generation"].process(fix_prompt)
+            
+            # Extract the fixed code
+            fixed_code = fix_result.get("generated_code") or fix_result.get("raw_analysis", "")
+            
+            # Clean up the response - extract just the code
+            if "```" in fixed_code:
+                # Extract code from markdown code blocks
+                import re
+                code_blocks = re.findall(r'```(?:\w+)?\n(.*?)```', fixed_code, re.DOTALL)
+                if code_blocks:
+                    fixed_code = code_blocks[0]
+            
+            # Validate we have actual code
+            if not fixed_code or len(fixed_code) < 10:
+                logger.warning(f"[FIXBUGS] Generated code too short for {file_path}")
+                files_failed.append({"file": file_path, "reason": "Generated code too short"})
+                continue
+            
+            # Commit the fix to the PR
+            commit_message = f"fix: Apply InspectAI bug fixes to {file_path}\n\nFixed {len(file_bugs)} bug(s):\n" + "\n".join(
+                [f"- {b.category}: {b.description[:50]}..." for b in file_bugs]
+            )
+            
+            github_client.update_file_in_pr(
+                repo_url=repo_full_name,
+                pr_number=pr_number,
+                file_path=file_path,
+                new_content=fixed_code,
+                commit_message=commit_message
+            )
+            
+            logger.info(f"[FIXBUGS] Committed fix for {file_path}")
+            files_fixed.append({
                 "file": file_path,
-                "bugs_fixed": len(file_bugs),
-                "fix_suggestion": fix_result.get("generated_code", fix_result.get("raw_analysis", ""))
+                "bugs_fixed": len(file_bugs)
             })
             
-            # Mark bugs as addressed in memory
+            # Mark bugs as fixed in memory
             pr_memory.mark_bugs_fixed(
                 repo_full_name, pr_number, file_path,
                 [b.line_number for b in file_bugs]
             )
             
         except Exception as e:
-            logger.error(f"[FIXBUGS] Failed to generate fix for {file_path}: {e}")
+            logger.error(f"[FIXBUGS] Failed to fix {file_path}: {e}", exc_info=True)
+            files_failed.append({"file": file_path, "reason": str(e)})
             continue
     
-    # Post fix suggestions
-    if fixes_generated:
-        message_parts = [f"""## 🔧 InspectAI Fix Bugs - Generated Fixes
+    # Post summary
+    if files_fixed:
+        total_bugs = sum(f["bugs_fixed"] for f in files_fixed)
+        message_parts = [f"""## 🔧 InspectAI Fix Bugs - Fixes Committed!
 
 **Triggered by:** @{comment_author}
-**Files with Fixes:** {len(fixes_generated)}
-**Total Bugs Addressed:** {len(unfixed_bugs)}
+**Files Fixed:** {len(files_fixed)}
+**Total Bugs Fixed:** {total_bugs}
 
-Below are the generated fixes for the detected bugs:
-
----
+### ✅ Fixed Files:
 """]
         
-        for fix in fixes_generated:
-            message_parts.append(f"""
-### 📁 `{fix['file']}` ({fix['bugs_fixed']} bugs)
-
-{fix['fix_suggestion'][:2000]}{"..." if len(str(fix['fix_suggestion'])) > 2000 else ""}
-
----
-""")
+        for fix in files_fixed:
+            message_parts.append(f"- `{fix['file']}` - {fix['bugs_fixed']} bug(s) fixed\n")
+        
+        if files_failed:
+            message_parts.append("\n### ⚠️ Failed Files:\n")
+            for fail in files_failed:
+                message_parts.append(f"- `{fail['file']}` - {fail['reason']}\n")
         
         message_parts.append("""
-💡 **How to apply these fixes:**
-1. Review each suggestion carefully
-2. Copy the fixed code to your files
-3. Test the changes locally
-4. Commit and push
+---
+✨ **Fixes have been committed to this PR!**
 
-*Bugs have been marked as addressed in memory.*
+Please review the changes and run your tests to verify the fixes.
 """)
         
         message = "".join(message_parts)
-        
-        # Truncate if too long
-        if len(message) > 65000:
-            message = message[:65000] + "\n\n*[Message truncated due to length]*"
-        
         github_client.post_pr_comment(repo_full_name, pr_number, message)
-        return {"status": "success", "fixes_generated": len(fixes_generated), "bugs_addressed": len(unfixed_bugs)}
+        return {"status": "success", "files_fixed": len(files_fixed), "bugs_fixed": total_bugs}
     else:
         message = f"""## 🔧 InspectAI Fix Bugs
 
 **Triggered by:** @{comment_author}
 
-❌ **Failed to generate fixes.**
+❌ **Failed to generate and commit fixes.**
 
-Please check the logs for details.
+{"### Failed Files:" + chr(10) + chr(10).join([f"- `{f['file']}`: {f['reason']}" for f in files_failed]) if files_failed else ""}
+
+Please check the error messages and try again.
 """
         github_client.post_pr_comment(repo_full_name, pr_number, message)
         return {"status": "error", "message": "Failed to generate fixes"}

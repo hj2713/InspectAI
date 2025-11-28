@@ -326,6 +326,15 @@ class GitHubClient:
         response.raise_for_status()
         return response.json()
     
+    def _api_put(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Make a PUT request to GitHub API."""
+        url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
+        logger.debug(f"PUT {url}")
+        
+        response = self.session.put(url, json=data)
+        response.raise_for_status()
+        return response.json()
+    
     def clone_repo(
         self,
         repo_url: str,
@@ -675,6 +684,60 @@ class GitHubClient:
             f"repos/{owner}/{repo}/pulls/{pr_number}/reviews",
             review_data
         )
+    
+    def update_file_in_pr(
+        self,
+        repo_url: str,
+        pr_number: int,
+        file_path: str,
+        new_content: str,
+        commit_message: str
+    ) -> Dict[str, Any]:
+        """Update a file in a PR branch and commit the changes.
+        
+        Args:
+            repo_url: Repository URL or owner/repo format
+            pr_number: PR number
+            file_path: Path to the file to update
+            new_content: New content for the file
+            commit_message: Commit message
+            
+        Returns:
+            API response with commit info
+        """
+        import base64
+        
+        owner, repo = self._parse_repo_url(repo_url)
+        
+        # Get PR info to find the branch
+        pr_data = self._api_get(f"repos/{owner}/{repo}/pulls/{pr_number}")
+        branch = pr_data["head"]["ref"]
+        
+        # Get current file to get its SHA (needed for update)
+        try:
+            file_info = self._api_get(f"repos/{owner}/{repo}/contents/{file_path}?ref={branch}")
+            file_sha = file_info["sha"]
+        except Exception as e:
+            logger.error(f"Failed to get file info for {file_path}: {e}")
+            raise
+        
+        # Update the file
+        encoded_content = base64.b64encode(new_content.encode()).decode()
+        
+        update_data = {
+            "message": commit_message,
+            "content": encoded_content,
+            "sha": file_sha,
+            "branch": branch
+        }
+        
+        result = self._api_put(
+            f"repos/{owner}/{repo}/contents/{file_path}",
+            update_data
+        )
+        
+        logger.info(f"Committed fix to {file_path} in {owner}/{repo}#{pr_number}")
+        return result
     
     def cleanup(self) -> None:
         """Clean up temporary directories."""
