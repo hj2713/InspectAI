@@ -17,19 +17,30 @@ except ImportError:
 
 
 class LLMClient:
-    def __init__(self, default_model: str = "gpt-4", default_temperature: float = 0.2, default_max_tokens: int = 1024, provider: str = "openai"):
+    def __init__(self, default_model: str = "ibm-granite/granite-4.0-h-tiny", default_temperature: float = 0.2, default_max_tokens: int = 1024, provider: str = "bytez"):
         self.default_model = default_model
         self.default_temperature = default_temperature
         self.default_max_tokens = default_max_tokens
         self.provider = provider
         
+        # Map "local" to "bytez" since they use the same API
+        if self.provider == "local":
+            self.provider = "bytez"
+        
         if self.provider == "bytez":
             if Bytez is None:
                 raise ImportError("bytez package is not installed. Please install it with `pip install bytez`.")
-            self.client = Bytez(os.getenv("BYTEZ_API_KEY"))
+            api_key = os.getenv("BYTEZ_API_KEY")
+            if not api_key:
+                raise ValueError("BYTEZ_API_KEY environment variable is not set")
+            self.client = Bytez(api_key)
+        elif self.provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY environment variable is not set")
+            self.client = OpenAI(api_key=api_key)
         else:
-            # configure API key from env; main usually loads .env
-            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            raise ValueError(f"Unknown provider: {self.provider}. Supported: 'bytez', 'openai'")
 
     def chat(self, messages: List[Dict[str, str]], model: Optional[str] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None) -> str:
         """Send a chat-style request and return the assistant content.
