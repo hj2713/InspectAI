@@ -1,0 +1,874 @@
+2025-11-26 17:53:55 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-26 17:53:55 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-26 17:58:46 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-26 17:58:46 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-27 22:18:23 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-27 22:18:23 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-27 22:23:40 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-27 22:23:40 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-27 22:23:59 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-27 22:23:59 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-27 22:25:53 | INFO     | src.api.webhooks:186 | Received ping event (delivery: f0f1fcc6-cc09-11f0-826e-d398959a8d4f)
+2025-11-27 22:34:47 | INFO     | src.api.webhooks:186 | Received installation event (delivery: 300e1060-cc0b-11f0-9680-551873e886af)
+2025-11-27 22:38:15 | INFO     | src.api.webhooks:186 | Received installation_repositories event (delivery: abd7ab70-cc0b-11f0-8349-7cccaf15f9c8)
+2025-11-27 22:40:03 | INFO     | src.api.webhooks:186 | Received ping event (delivery: eb513f00-cc0b-11f0-92d8-58558d49e85e)
+2025-11-27 23:47:33 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-27 23:47:33 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-27 23:47:59 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-27 23:47:59 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-27 23:50:25 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-27 23:50:25 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-28 00:07:35 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-28 00:07:35 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-28 00:10:26 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-28 00:10:26 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-28 00:13:24 | WARNING  | src.api.webhooks:239 | Invalid webhook signature for delivery f6508980-cc18-11f0-8bd0-b6992a852c39
+2025-11-28 00:19:11 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-28 00:19:11 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-28 00:19:40 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-28 00:19:40 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-28 00:20:35 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:35 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: f7a52790-cc19-11f0-8cbb-acbc905e1f76)
+2025-11-28 00:20:35 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by hj2713
+2025-11-28 00:20:35 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by hj2713
+2025-11-28 00:20:35 | INFO     | src.github.client:227 | Getting new installation token for installation 96944994
+2025-11-28 00:20:36 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:36 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /app/installations/96944994/access_tokens HTTP/1.1" 201 197
+2025-11-28 00:20:36 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:36 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:36 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:36 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:36 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3800
+2025-11-28 00:20:36 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:38 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:38 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: f922c6e0-cc19-11f0-92be-c50f8019d49d)
+2025-11-28 00:20:38 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:38 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:38 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:38 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:38 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:38 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:38 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:39 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:39 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:40 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:40 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: fa7c3c60-cc19-11f0-9eb2-a2a639a1cb0e)
+2025-11-28 00:20:40 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:40 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:40 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:40 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:40 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:40 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:40 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:41 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:41 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:42 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:42 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: fb991e10-cc19-11f0-8ab6-08f6f8867aa4)
+2025-11-28 00:20:42 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:42 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:42 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:42 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:42 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:42 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:42 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:43 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:43 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:44 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:44 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: fcb192f0-cc19-11f0-8ef4-5b4dc079cac4)
+2025-11-28 00:20:44 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:44 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:44 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:44 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:44 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:44 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:44 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:44 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:44 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:45 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:45 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: fdbc7340-cc19-11f0-9723-9241b2216096)
+2025-11-28 00:20:45 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:45 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:45 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:45 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:45 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:45 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:45 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:46 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:46 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:47 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:47 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: feba3430-cc19-11f0-8189-51ea83c1d7be)
+2025-11-28 00:20:47 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:47 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:47 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:47 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:47 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:47 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:47 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:48 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:48 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:49 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:49 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: ffa2e680-cc19-11f0-9869-cae051d63407)
+2025-11-28 00:20:49 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:49 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:49 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:49 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:49 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:49 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:49 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:49 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:49 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:51 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:51 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 00e66300-cc1a-11f0-899d-efd51d7a5483)
+2025-11-28 00:20:51 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:51 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:51 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:51 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:51 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:51 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:51 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:52 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:52 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:53 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:53 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 027bf720-cc1a-11f0-915f-d78f46c0a8f7)
+2025-11-28 00:20:53 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:53 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:53 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:53 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:53 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:53 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:53 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:54 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:54 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:56 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:56 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 03be1410-cc1a-11f0-8e89-6d97fac9e6c0)
+2025-11-28 00:20:56 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:56 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:56 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:56 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:56 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:56 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:56 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:57 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:57 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:20:58 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:20:58 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 05293cd0-cc1a-11f0-982c-a562284ef465)
+2025-11-28 00:20:58 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:58 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:20:58 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:20:58 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:20:58 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:20:58 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:20:58 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:20:59 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:20:59 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:00 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:00 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 06ab48f0-cc1a-11f0-8891-1079705a51f0)
+2025-11-28 00:21:00 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:00 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:00 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:00 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:00 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:00 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:00 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:01 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:01 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:02 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:02 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 07dc00c0-cc1a-11f0-9329-20f636fbc15d)
+2025-11-28 00:21:02 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:02 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:02 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:02 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:02 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:02 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:02 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:03 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:03 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:04 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:04 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 08d70290-cc1a-11f0-80a3-8ba263f344fe)
+2025-11-28 00:21:04 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:04 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:04 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:04 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:04 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:04 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:04 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:05 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:05 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:06 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:06 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 0a1aa620-cc1a-11f0-9bd2-87c246839c9d)
+2025-11-28 00:21:06 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:06 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:06 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:06 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:06 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:06 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:06 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:07 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:07 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:09 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:09 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 0b9d4e80-cc1a-11f0-8310-b212ac9cb52f)
+2025-11-28 00:21:09 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:09 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:09 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:09 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:09 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:09 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:09 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:09 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:09 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:11 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:11 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 0ca7e0b0-cc1a-11f0-98f8-6902e13423ea)
+2025-11-28 00:21:11 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:11 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:11 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:11 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:11 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:11 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:11 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:11 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:11 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:12 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:12 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 0dd934c0-cc1a-11f0-90df-38679386d516)
+2025-11-28 00:21:12 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:12 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:12 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:12 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:12 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:12 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:12 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:13 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:13 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:14 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:14 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 0ebbcc90-cc1a-11f0-8e88-60f15105a98c)
+2025-11-28 00:21:14 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:14 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:14 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:14 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:14 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:14 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:14 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:15 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:15 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:16 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:16 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 0fde5390-cc1a-11f0-8a8e-230ad363fc75)
+2025-11-28 00:21:16 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:16 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:16 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:16 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:16 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:16 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:16 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:16 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:16 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:17 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:17 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 10cafd80-cc1a-11f0-9ed7-f4ddb703fd76)
+2025-11-28 00:21:17 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:17 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:17 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:17 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:17 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:17 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:17 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:18 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:18 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:19 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:19 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 11d3e200-cc1a-11f0-8c37-495ccc9a8189)
+2025-11-28 00:21:19 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:19 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:19 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:19 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:19 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:19 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:19 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:20 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:20 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:21 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:21 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 12cbd690-cc1a-11f0-90aa-10a4a44f6563)
+2025-11-28 00:21:21 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:21 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:21 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:21 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:21 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:21 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:21 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:21 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:21 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:22 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:22 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 13d15fb0-cc1a-11f0-9fb3-5da0b8426d30)
+2025-11-28 00:21:22 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:22 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:22 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:22 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:22 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:22 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:22 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:23 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:23 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:25 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:25 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 15037710-cc1a-11f0-80a0-f2746e362245)
+2025-11-28 00:21:25 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:25 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:25 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:25 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:25 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:25 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:25 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:25 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:25 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:26 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:26 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1627d2d0-cc1a-11f0-9913-54b81f8774e8)
+2025-11-28 00:21:26 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:26 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:26 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:26 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:26 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:26 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:26 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:27 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:27 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:28 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:28 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 173a2d30-cc1a-11f0-81e8-372ff83643f9)
+2025-11-28 00:21:28 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:28 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:28 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:28 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:28 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:28 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:28 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:29 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:29 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:31 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:31 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 18983690-cc1a-11f0-9335-7b7879c1a6be)
+2025-11-28 00:21:31 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:31 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:31 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:31 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:31 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:31 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:31 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:32 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:32 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:33 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:33 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1a393c60-cc1a-11f0-9831-75bd0444613e)
+2025-11-28 00:21:33 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:33 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:33 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:33 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:33 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:33 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:33 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:34 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:34 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:35 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:35 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1b20dd40-cc1a-11f0-8426-0373197b7d27)
+2025-11-28 00:21:35 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:35 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:35 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:35 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:35 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:35 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:35 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:35 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:35 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:36 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:36 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1c1c2d30-cc1a-11f0-9dad-80f3a4fdba8d)
+2025-11-28 00:21:36 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:36 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:36 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:36 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:36 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:36 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:36 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:37 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:37 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:39 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:39 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1d55e5b0-cc1a-11f0-8184-9ae6a347140e)
+2025-11-28 00:21:39 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:39 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:39 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:39 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:39 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:39 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:39 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:39 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:39 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:40 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:40 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1e81bb80-cc1a-11f0-8926-671d2a144f93)
+2025-11-28 00:21:40 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:40 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:40 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:40 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:40 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:40 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:40 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:41 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:41 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:42 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:42 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 1f6516a0-cc1a-11f0-96a0-d43ca7e4e6d4)
+2025-11-28 00:21:42 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:42 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:42 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:42 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:42 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:42 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:42 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:43 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:43 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:44 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:44 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 204d2cb0-cc1a-11f0-89e2-1ee4f4fe2b8e)
+2025-11-28 00:21:44 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:44 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:44 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:44 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:44 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:44 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:44 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:44 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:44 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:45 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:45 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 21485590-cc1a-11f0-9f35-28dda548bf0b)
+2025-11-28 00:21:45 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:45 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:45 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:45 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:45 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:45 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:45 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:46 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:46 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:47 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:47 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 22678130-cc1a-11f0-893b-77eee76a8801)
+2025-11-28 00:21:47 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:47 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:47 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:47 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:47 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:47 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:47 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:48 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:48 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:49 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:49 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 23719e30-cc1a-11f0-8f8e-c002e1b10c08)
+2025-11-28 00:21:49 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:49 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:49 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:49 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:49 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:49 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:49 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:49 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:49 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:50 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:50 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 242f6ff0-cc1a-11f0-8d95-c4125bc568ca)
+2025-11-28 00:21:50 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:50 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:50 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:50 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:50 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:50 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:50 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:51 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:51 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:52 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:52 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 255aa980-cc1a-11f0-9b05-835543c58bf1)
+2025-11-28 00:21:52 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:52 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:52 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:52 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:52 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:52 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:52 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:53 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:53 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:54 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:54 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 26ac2fc0-cc1a-11f0-8405-754f131710c0)
+2025-11-28 00:21:54 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:54 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:54 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:54 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:54 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:54 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:54 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:55 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:55 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:56 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:56 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 27ab7750-cc1a-11f0-97e4-b87c45d4e2a7)
+2025-11-28 00:21:56 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:56 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:56 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:56 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:56 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:56 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:56 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:56 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:56 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:21:58 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:21:58 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 290bcaa0-cc1a-11f0-8d97-31cf2ad7e9c3)
+2025-11-28 00:21:58 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:58 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:21:58 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:21:58 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:21:58 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:21:58 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:21:58 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:21:59 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:21:59 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:01 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:01 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 2a8dd6c0-cc1a-11f0-8985-8ac36e44f8f5)
+2025-11-28 00:22:01 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:01 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:01 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:01 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:01 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:01 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:01 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:01 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:01 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:03 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:03 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 2be9bd40-cc1a-11f0-806d-c980fbe5f7ff)
+2025-11-28 00:22:03 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:03 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:03 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:03 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:03 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:03 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:03 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:04 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:04 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:05 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:05 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 2d3e77d0-cc1a-11f0-8e08-f44799292e23)
+2025-11-28 00:22:05 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:05 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:05 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:05 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:05 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:05 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:05 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:06 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:06 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:07 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:07 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 2e859dd0-cc1a-11f0-93e8-1205f6b2b054)
+2025-11-28 00:22:07 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:07 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:07 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:07 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:07 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:07 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:07 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:08 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:08 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:09 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:09 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 2f9d4f60-cc1a-11f0-8165-6e2e7e7658a3)
+2025-11-28 00:22:09 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:09 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:09 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:09 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:09 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:09 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:09 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:10 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:10 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:12 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:12 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 310320f0-cc1a-11f0-953d-878fcb21c264)
+2025-11-28 00:22:12 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:12 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:12 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:12 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:12 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:12 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:12 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:12 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:12 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:14 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:14 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 323d75b0-cc1a-11f0-8217-5659fd82bd5d)
+2025-11-28 00:22:14 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:14 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:14 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:14 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:14 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:14 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:14 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:14 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:14 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:15 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:15 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 332fec00-cc1a-11f0-8c54-09a1ba20d723)
+2025-11-28 00:22:15 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:15 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:15 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:15 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:15 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:15 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:15 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:16 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:16 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:17 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:17 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 345d6f80-cc1a-11f0-83de-4cb8c8dfda6a)
+2025-11-28 00:22:17 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:17 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:17 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:17 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:17 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:17 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:17 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:18 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:18 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:19 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:19 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 35505b00-cc1a-11f0-966f-bbcb248a1f92)
+2025-11-28 00:22:19 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:19 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:19 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:19 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:19 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:19 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:19 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:19 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:19 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:21 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:21 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 36a05aa0-cc1a-11f0-8e2b-3d808062219d)
+2025-11-28 00:22:21 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:21 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:21 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:21 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:21 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:21 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:21 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:22 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:22 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:23 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:23 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 37e66f30-cc1a-11f0-80a0-03ba07df7d75)
+2025-11-28 00:22:23 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:23 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:23 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:23 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:23 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:23 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:23 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:24 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:24 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:25 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:25 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 390796a0-cc1a-11f0-999e-e6ddf3f78fa0)
+2025-11-28 00:22:25 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:25 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:25 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:25 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:25 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:25 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:25 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:26 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:26 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:27 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:27 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 39ff3d10-cc1a-11f0-8b7f-60c8f877b706)
+2025-11-28 00:22:27 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:27 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:27 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:27 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:27 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:27 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:27 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:27 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:27 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:28 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:28 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 3b0c6750-cc1a-11f0-8f7f-6228caf3e9b1)
+2025-11-28 00:22:28 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:28 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:28 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:28 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:28 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:28 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:28 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:30 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:30 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:30 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:30 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 3c399cb0-cc1a-11f0-8fc2-0e8f9eb28634)
+2025-11-28 00:22:30 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:30 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:30 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:30 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:30 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:30 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:30 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:31 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:31 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:32 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:32 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 3d23ae90-cc1a-11f0-839c-87240e7e2237)
+2025-11-28 00:22:32 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:32 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:32 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:32 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:32 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:32 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:32 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:32 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:32 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:34 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:34 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 3e5a80e0-cc1a-11f0-8732-f86c00269ec5)
+2025-11-28 00:22:34 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:34 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:34 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:34 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:34 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:34 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:34 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:34 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:34 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:36 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:36 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 3f544a30-cc1a-11f0-9598-96923d38e071)
+2025-11-28 00:22:36 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:36 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:36 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:36 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:36 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:36 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:36 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:36 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:36 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:38 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:38 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 408e02b0-cc1a-11f0-9f55-ccb7be954d11)
+2025-11-28 00:22:38 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:38 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:38 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:38 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:38 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:38 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:38 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:38 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:38 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:40 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:40 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 41bf08a0-cc1a-11f0-88a0-e0b25a0e8f49)
+2025-11-28 00:22:40 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:40 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:40 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:40 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:40 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:40 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:40 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:40 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:40 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:41 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:41 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 42dcfbc0-cc1a-11f0-8f06-c3e84a34d462)
+2025-11-28 00:22:41 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:41 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:41 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:41 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:41 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:41 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:41 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:42 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:42 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:44 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:44 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 442bc2e0-cc1a-11f0-9b38-12019d6c62ff)
+2025-11-28 00:22:44 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:44 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:44 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:44 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:44 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:44 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:44 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:44 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:44 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:46 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:46 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 458e8730-cc1a-11f0-8f8b-0cc6fc9f1a85)
+2025-11-28 00:22:46 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:46 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:46 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:46 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:46 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:46 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:46 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:47 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:47 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:22:48 | WARNING  | src.api.webhooks:242 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:22:48 | INFO     | src.api.webhooks:255 | Received issue_comment event (delivery: 468d5990-cc1a-11f0-8b03-5f7b67355515)
+2025-11-28 00:22:48 | INFO     | src.api.webhooks:318 | /InspectAI review command detected on hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:48 | INFO     | src.api.webhooks:167 | Handling /InspectAI review command for hj2713/2020-Coding-Challenge#1 by comse6998-inspectai[bot]
+2025-11-28 00:22:48 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:22:48 | INFO     | src.api.webhooks:173 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:22:48 | INFO     | src.github.client:551 | Posting comment on PR #1
+2025-11-28 00:22:48 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/1/comments
+2025-11-28 00:22:48 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:22:48 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/1/comments HTTP/1.1" 201 3818
+2025-11-28 00:22:48 | INFO     | src.api.webhooks:207 | Successfully posted Hello World comment on hj2713/2020-Coding-Challenge#1
+2025-11-28 00:36:22 | INFO     | src.utils.logger:118 | Logging initialized. Level: INFO, Console: True, Files: True
+2025-11-28 00:36:22 | INFO     | src.utils.logger:120 | Log directory: /Users/himanshujhawar/Desktop/COMSE6998-015-Fall-2025-Multi-Agent-Code-Review-and-Debugging-Network/logs
+2025-11-28 00:40:32 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:40:32 | INFO     | src.api.webhooks:361 | Received pull_request event (delivery: c103aec0-cc1c-11f0-8639-8329cd159b74)
+2025-11-28 00:42:19 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:42:19 | INFO     | src.api.webhooks:361 | Received pull_request event (delivery: 00970320-cc1d-11f0-8126-2cd172669e8f)
+2025-11-28 00:42:19 | INFO     | src.api.webhooks:384 | PR opened: hj2713/2020-Coding-Challenge#2
+2025-11-28 00:42:19 | INFO     | src.api.webhooks:112 | Processing PR review for hj2713/2020-Coding-Challenge#2 (action: opened)
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:54 | Initializing agents...
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized research agent
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized analysis agent
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized generation agent
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized bug_detection agent
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized security agent
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized test_generation agent
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:69 | Initialized documentation agent
+2025-11-28 00:42:19 | INFO     | agent.orchestrator:159 | [orchestrator][task:b05dfd0b] Starting task: pr_review. Input: ...
+2025-11-28 00:42:19 | DEBUG    | src.memory.agent_memory:197 | Started task context: b05dfd0b (pr_review)
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:337 | Reviewing PR #2 from hj2713/2020-Coding-Challenge
+2025-11-28 00:42:19 | DEBUG    | src.github.client:276 | GET https://api.github.com/repos/hj2713/2020-Coding-Challenge/pulls/2
+2025-11-28 00:42:19 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:42:19 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "GET /repos/hj2713/2020-Coding-Challenge/pulls/2 HTTP/1.1" 200 None
+2025-11-28 00:42:19 | DEBUG    | src.github.client:276 | GET https://api.github.com/repos/hj2713/2020-Coding-Challenge/pulls/2/files
+2025-11-28 00:42:19 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "GET /repos/hj2713/2020-Coding-Challenge/pulls/2/files HTTP/1.1" 200 423
+2025-11-28 00:42:19 | DEBUG    | src.github.client:276 | GET https://api.github.com/repos/hj2713/2020-Coding-Challenge/pulls/2
+2025-11-28 00:42:19 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "GET /repos/hj2713/2020-Coding-Challenge/pulls/2 HTTP/1.1" 200 1976
+2025-11-28 00:42:19 | DEBUG    | src.github.client:276 | GET https://api.github.com/repos/hj2713/2020-Coding-Challenge/contents/templates/scoreboard.html?ref=5e6c41ef7728bf1f58d5cf239d752449406b4a3a
+2025-11-28 00:42:19 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "GET /repos/hj2713/2020-Coding-Challenge/contents/templates/scoreboard.html?ref=5e6c41ef7728bf1f58d5cf239d752449406b4a3a HTTP/1.1" 200 2630
+2025-11-28 00:42:19 | INFO     | src.github.client:551 | Posting comment on PR #2
+2025-11-28 00:42:19 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/2/comments
+2025-11-28 00:42:19 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/2/comments HTTP/1.1" 401 120
+2025-11-28 00:42:19 | ERROR    | src.orchestrator.orchestrator:396 | Failed to post comment: 401 Client Error: Unauthorized for url: https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/2/comments
+2025-11-28 00:42:19 | INFO     | agent.orchestrator:159 | [orchestrator][task:b05dfd0b] Completed task: pr_review. Status: ok
+2025-11-28 00:42:19 | INFO     | src.api.webhooks:139 | PR review completed for hj2713/2020-Coding-Challenge#2
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:498 | Cleaning up orchestrator...
+2025-11-28 00:42:19 | INFO     | src.orchestrator.orchestrator:506 | Orchestrator cleanup complete
+2025-11-28 00:42:26 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:42:26 | INFO     | src.api.webhooks:361 | Received pull_request event (delivery: 04dd5f60-cc1d-11f0-90de-f598e6059e0e)
+2025-11-28 00:42:34 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:42:34 | INFO     | src.api.webhooks:361 | Received issue_comment event (delivery: 09e3d750-cc1d-11f0-952c-742de365420b)
+2025-11-28 00:42:34 | INFO     | src.api.webhooks:441 | /InspectAI_review command detected on hj2713/2020-Coding-Challenge#2 by hj2713
+2025-11-28 00:42:34 | INFO     | src.api.webhooks:169 | Handling /InspectAI_review command for hj2713/2020-Coding-Challenge#2 by hj2713
+2025-11-28 00:42:34 | INFO     | src.github.client:227 | Getting new installation token for installation 96944994
+2025-11-28 00:42:34 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:42:34 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /app/installations/96944994/access_tokens HTTP/1.1" 201 197
+2025-11-28 00:42:34 | INFO     | src.api.webhooks:175 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:42:34 | INFO     | src.github.client:551 | Posting comment on PR #2
+2025-11-28 00:42:34 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/2/comments
+2025-11-28 00:42:34 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:42:35 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/2/comments HTTP/1.1" 201 4385
+2025-11-28 00:42:35 | INFO     | src.api.webhooks:313 | Successfully posted Code Reviewer Agent response on hj2713/2020-Coding-Challenge#2
+2025-11-28 00:42:37 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:42:37 | INFO     | src.api.webhooks:361 | Received issue_comment event (delivery: 0b290180-cc1d-11f0-9444-72430f8ebee3)
+2025-11-28 00:42:37 | INFO     | src.api.webhooks:425 | Ignoring comment from bot: comse6998-inspectai[bot]
+2025-11-28 00:43:04 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:43:04 | INFO     | src.api.webhooks:361 | Received issue_comment event (delivery: 1b509870-cc1d-11f0-8587-6e7589031ba6)
+2025-11-28 00:43:04 | INFO     | src.api.webhooks:441 | /InspectAI_bugs command detected on hj2713/2020-Coding-Challenge#2 by hj2713
+2025-11-28 00:43:04 | INFO     | src.api.webhooks:169 | Handling /InspectAI_bugs command for hj2713/2020-Coding-Challenge#2 by hj2713
+2025-11-28 00:43:04 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:43:04 | INFO     | src.api.webhooks:175 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:43:04 | INFO     | src.github.client:551 | Posting comment on PR #2
+2025-11-28 00:43:04 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/2/comments
+2025-11-28 00:43:04 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:43:04 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/2/comments HTTP/1.1" 201 4458
+2025-11-28 00:43:04 | INFO     | src.api.webhooks:313 | Successfully posted Bug Finder Agent response on hj2713/2020-Coding-Challenge#2
+2025-11-28 00:43:05 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:43:05 | INFO     | src.api.webhooks:361 | Received issue_comment event (delivery: 1c427280-cc1d-11f0-84c3-901ffc9ae17f)
+2025-11-28 00:43:05 | INFO     | src.api.webhooks:425 | Ignoring comment from bot: comse6998-inspectai[bot]
+2025-11-28 00:43:12 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:43:12 | INFO     | src.api.webhooks:361 | Received pull_request_review event (delivery: 20480336-cc1d-11f0-9aba-e27abf4751bf)
+2025-11-28 00:43:22 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:43:22 | INFO     | src.api.webhooks:361 | Received issue_comment event (delivery: 267735b0-cc1d-11f0-8ee5-f431f47fb16c)
+2025-11-28 00:43:22 | INFO     | src.api.webhooks:441 | /InspectAI_refactor command detected on hj2713/2020-Coding-Challenge#2 by hj2713
+2025-11-28 00:43:22 | INFO     | src.api.webhooks:169 | Handling /InspectAI_refactor command for hj2713/2020-Coding-Challenge#2 by hj2713
+2025-11-28 00:43:22 | DEBUG    | src.github.client:223 | Using cached token for installation 96944994
+2025-11-28 00:43:22 | INFO     | src.api.webhooks:175 | Using GitHub App installation token for installation 96944994
+2025-11-28 00:43:22 | INFO     | src.github.client:551 | Posting comment on PR #2
+2025-11-28 00:43:22 | DEBUG    | src.github.client:285 | POST https://api.github.com/repos/hj2713/2020-Coding-Challenge/issues/2/comments
+2025-11-28 00:43:22 | DEBUG    | urllib3.connectionpool:1049 | Starting new HTTPS connection (1): api.github.com:443
+2025-11-28 00:43:23 | DEBUG    | urllib3.connectionpool:544 | https://api.github.com:443 "POST /repos/hj2713/2020-Coding-Challenge/issues/2/comments HTTP/1.1" 201 4695
+2025-11-28 00:43:23 | INFO     | src.api.webhooks:313 | Successfully posted Refactor Agent response on hj2713/2020-Coding-Challenge#2
+2025-11-28 00:43:24 | WARNING  | src.api.webhooks:348 | Webhook signature verification SKIPPED - no secret configured
+2025-11-28 00:43:24 | INFO     | src.api.webhooks:361 | Received issue_comment event (delivery: 2785bf80-cc1d-11f0-9b66-482e38d6d0b0)
+2025-11-28 00:43:24 | INFO     | src.api.webhooks:425 | Ignoring comment from bot: comse6998-inspectai[bot]

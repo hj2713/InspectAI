@@ -1,0 +1,38 @@
+# Ignore files for Docker build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+pytest.ini
+
+# Local config
+.env
+.env.local
+*.log
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Debug scripts
+debug_*.py
+list_*.py

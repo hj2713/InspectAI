@@ -1,0 +1,102 @@
+# GitHub Actions workflow for automatic deployment to Google Cloud Run
+# 
+# This workflow:
+# 1. Triggers on push to main branch
+# 2. Builds a Docker image
+# 3. Pushes to Google Artifact Registry
+# 4. Deploys to Cloud Run
+#
+# Required GitHub Secrets (set in repo Settings > Secrets):
+# - GCP_PROJECT_ID: Your Google Cloud project ID
+# - GCP_SA_KEY: Service account JSON key (base64 encoded)
+# - GITHUB_APP_ID: Your GitHub App ID
+# - GITHUB_APP_PRIVATE_KEY: Your GitHub App private key (base64 encoded)
+# - GITHUB_WEBHOOK_SECRET: Your webhook secret
+# - BYTEZ_API_KEY: Your Bytez API key
+
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - hj2713  # Also deploy from your branch for testing
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: inspectai-webhook
+  IMAGE_NAME: inspectai-webhook
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Step 3: Set up Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      # Step 4: Configure Docker for Artifact Registry
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # Step 5: Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                     ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:latest
+
+      # Step 6: Push Docker image
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:latest
+
+      # Step 7: Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --set-env-vars "GITHUB_APP_ID=${{ secrets.GITHUB_APP_ID }}" \
+            --set-env-vars "GITHUB_WEBHOOK_SECRET=${{ secrets.GITHUB_WEBHOOK_SECRET }}" \
+            --set-env-vars "BYTEZ_API_KEY=${{ secrets.BYTEZ_API_KEY }}" \
+            --set-secrets "GITHUB_APP_PRIVATE_KEY=github-app-private-key:latest" \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 300 \
+            --min-instances 0 \
+            --max-instances 10
+
+      # Step 8: Get and display the service URL
+      - name: Get Service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "🚀 Service deployed successfully!"
+          echo "📍 Service URL: $SERVICE_URL"
+          echo "🔗 Webhook URL: $SERVICE_URL/webhooks/webhook/github"
+          echo ""
+          echo "Update your GitHub App webhook URL to:"
+          echo "$SERVICE_URL/webhooks/webhook/github"

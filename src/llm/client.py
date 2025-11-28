@@ -42,12 +42,25 @@ class LLMClient:
         max_tokens = self.default_max_tokens if max_tokens is None else max_tokens
 
         if self.provider == "bytez":
-            # Convert messages to string prompt for Bytez
-            prompt = "\n".join([m["content"] for m in messages])
+            # Convert messages to string prompt for Bytez with role labels
+            prompt_parts = []
+            for msg in messages:
+                role = msg.get("role", "user").capitalize()
+                content = msg.get("content", "")
+                prompt_parts.append(f"{role}: {content}")
+            prompt_parts.append("Assistant:") # Prompt for completion
+            prompt = "\n".join(prompt_parts)
             
             m = self.client.model(model)
             resp = m.run(prompt)
             
+            # Handle Bytez Response object
+            if hasattr(resp, 'error') and resp.error:
+                raise Exception(f"Bytez API Error: {resp.error}")
+            
+            if hasattr(resp, 'output') and resp.output:
+                return resp.output
+
             # Handle response assuming it might be a dict with 'output' or direct string
             if isinstance(resp, dict) and 'output' in resp:
                 return resp['output']

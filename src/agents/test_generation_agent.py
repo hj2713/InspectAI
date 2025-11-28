@@ -1,0 +1,133 @@
+"""Test Generation Agent for automatically creating test cases."""
+from typing import Any, Dict, List
+
+from .base_agent import BaseAgent
+
+
+class TestGenerationAgent(BaseAgent):
+    """Agent specialized in generating test cases for code.
+    
+    This is a stub implementation. Full functionality will be added later.
+    """
+    
+    def initialize(self) -> None:
+        """Initialize test generation LLM client."""
+        cfg = self.config or {}
+        use_local = cfg.get("use_local", False)
+        provider = cfg.get("provider", "openai")
+
+        if use_local:
+            try:
+                from ..llm.local_client import LocalLLMClient as LLMClient
+                self.client = LLMClient(
+                    default_temperature=cfg.get("temperature", 0.3),
+                    default_max_tokens=cfg.get("max_tokens", 2048)
+                )
+                return
+            except Exception as e:
+                print("Warning: failed to initialize local LLM client:", e)
+                print("Falling back to cloud provider.")
+
+        from ..llm.client import LLMClient
+        self.client = LLMClient(
+            default_temperature=cfg.get("temperature", 0.3),
+            default_max_tokens=cfg.get("max_tokens", 2048),
+            provider=provider
+        )
+
+    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate test cases for the provided code.
+        
+        Args:
+            input_data: Dict containing:
+                - code: Source code to generate tests for
+                - framework: Test framework to use (pytest, unittest, etc.)
+                - coverage_focus: Areas to focus on (edge_cases, happy_path, etc.)
+            
+        Returns:
+            Dict containing generated test code and test descriptions
+        """
+        code = input_data.get("code", "")
+        framework = input_data.get("framework", "pytest")
+        coverage_focus = input_data.get("coverage_focus", ["happy_path", "edge_cases", "error_handling"])
+        
+        if isinstance(coverage_focus, list):
+            coverage_focus = ", ".join(coverage_focus)
+        
+        system = {
+            "role": "system",
+            "content": f"""You are an expert test engineer. Generate comprehensive test cases using {framework}.
+
+Focus on:
+- {coverage_focus}
+- Testing all public functions/methods
+- Testing boundary conditions
+- Testing error cases
+
+Provide:
+1. Complete, runnable test code
+2. Comments explaining what each test verifies
+3. Good test naming conventions
+
+Return the tests wrapped in ```python``` code blocks."""
+        }
+        
+        user = {
+            "role": "user",
+            "content": f"Generate comprehensive tests for this code:\n\n```\n{code}\n```"
+        }
+
+        resp = self.client.chat(
+            [system, user],
+            model=self.config.get("model"),
+            temperature=self.config.get("temperature"),
+            max_tokens=self.config.get("max_tokens")
+        )
+
+        # Extract code from response
+        test_code = self._extract_code(resp)
+        test_descriptions = self._extract_test_descriptions(resp)
+
+        return {
+            "status": "ok",
+            "raw_response": resp,
+            "test_code": test_code,
+            "test_descriptions": test_descriptions,
+            "framework": framework
+        }
+
+    def _extract_code(self, response: str) -> str:
+        """Extract code from markdown code blocks."""
+        import re
+        
+        # Try to find python code blocks
+        pattern = r"```(?:python)?\s*\n(.*?)```"
+        matches = re.findall(pattern, response, re.DOTALL)
+        
+        if matches:
+            return "\n\n".join(matches)
+        
+        # If no code blocks, return the whole response
+        return response
+
+    def _extract_test_descriptions(self, response: str) -> List[str]:
+        """Extract test descriptions from response."""
+        descriptions = []
+        
+        for line in response.splitlines():
+            line = line.strip()
+            # Look for test function definitions
+            if line.startswith("def test_"):
+                # Extract function name
+                func_name = line.split("(")[0].replace("def ", "")
+                descriptions.append(func_name)
+            # Look for comment descriptions
+            elif line.startswith("# Test:") or line.startswith("# Test "):
+                descriptions.append(line.replace("# ", ""))
+        
+        return descriptions
+
+    def cleanup(self) -> None:
+        """Cleanup resources."""
+        pass

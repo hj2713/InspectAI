@@ -1,0 +1,43 @@
+# Git files
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+
+# Private keys and secrets (we'll pass these via env vars)
+*.pem
+*.key
+*.p12
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Test files
+tests/
+*.test.py
+
+# Documentation (not needed at runtime)
+docs/
+*.md
+!README.md
+
+# Other
+.DS_Store
+*.tar.gz
+*.zip
