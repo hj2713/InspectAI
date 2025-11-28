@@ -70,6 +70,7 @@ cover/
 *.pub
 secrets.json
 client_secrets.json
+gcp_something.json
 
 # Project specific
 LLM-Project-Proposal (1).pdf

@@ -13,13 +13,9 @@ class DuplicationDetector(SpecializedAgent):
     def initialize(self) -> None:
         """Initialize LLM client for duplication detection."""
         cfg = self.config or {}
-        provider = cfg.get("provider", "openai")
         
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
-            default_max_tokens=cfg.get("max_tokens", 1024),
-            provider=provider
-        )
     
     def analyze(self, code: str) -> List[Finding]:
         """Analyze code for duplication and refactoring opportunities.
