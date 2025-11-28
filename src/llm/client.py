@@ -1,12 +1,3 @@
-"""LLM client wrapper supporting multiple providers.
-
-Supported providers:
-- bytez: Bytez API (default)
-- openai: OpenAI GPT models
-- gemini: Google Gemini models
-
-This wrapper centralizes calls to LLMs and makes it easier to switch providers.
-"""
 from __future__ import annotations
 
 import os
@@ -24,7 +15,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class LLMClient:
+# class LLMClient:
     def __init__(self, default_model: str = "ibm-granite/granite-4.0-h-tiny", default_temperature: float = 0.2, default_max_tokens: int = 1024, provider: str = "bytez"):
         self.default_model = default_model
         self.default_temperature = default_temperature
