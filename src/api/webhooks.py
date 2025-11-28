@@ -210,11 +210,15 @@ async def handle_agent_command(
             files_analyzed = 0
             
             for pr_file in pr.files:
+                logger.info(f"Checking file: {pr_file.filename}, status: {pr_file.status}")
+                
                 if pr_file.status == "removed":
+                    logger.info(f"Skipping removed file: {pr_file.filename}")
                     continue
                 
                 # Only analyze code files
                 if not orchestrator._is_code_file(pr_file.filename):
+                    logger.info(f"Skipping non-code file: {pr_file.filename}")
                     continue
                 
                 try:

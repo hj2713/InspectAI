@@ -402,8 +402,15 @@ class OrchestratorAgent:
     def _is_code_file(self, filename: str) -> bool:
         """Check if a file is a code file worth analyzing."""
         code_extensions = {
+            # Programming languages
             '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.c', '.cpp', '.h',
-            '.cs', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.scala'
+            '.cs', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.scala',
+            # Web files
+            '.html', '.htm', '.css', '.scss', '.sass', '.less',
+            # Data/Config
+            '.json', '.xml', '.yaml', '.yml', '.toml', '.ini',
+            # Shell/Script
+            '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd'
         }
         return any(filename.endswith(ext) for ext in code_extensions)
     
