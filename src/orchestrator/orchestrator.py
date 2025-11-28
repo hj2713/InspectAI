@@ -406,9 +406,9 @@ class OrchestratorAgent:
                 if self._is_code_file(pr_file.filename):
                     logger.info(f"Analyzing {pr_file.filename}...")
                     
-                    file_review["analysis"] = self.agents["analysis"].process(content, context=context)
-                    file_review["bugs"] = self.agents["bug_detection"].process(content, context=context)
-                    file_review["security"] = self.agents["security"].process(content, context=context)
+                    file_review["analysis"] = self.agents["analysis"].process(content, context=context, filename=pr_file.filename)
+                    file_review["bugs"] = self.agents["bug_detection"].process(content, context=context, filename=pr_file.filename)
+                    file_review["security"] = self.agents["security"].process(content, context=context, filename=pr_file.filename)
                 
                 results["file_reviews"].append(file_review)
             

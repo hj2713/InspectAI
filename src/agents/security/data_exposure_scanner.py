@@ -17,19 +17,31 @@ class DataExposureScanner(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for sensitive data exposure.
         
         Args:
-            code: Python source code to analyze
-            context: Optional additional context for the analysis (e.g., file path, surrounding code)
+            code: Source code to analyze
+            context: Optional additional context for the analysis
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to data exposure
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+
         system_prompt = {
             "role": "system",
-            "content": """You are a security expert specializing in data protection. Analyze for data exposure risks ONLY.
+            "content": f"""You are a security expert specializing in data protection. Analyze {language} code for data exposure risks ONLY.
 
 Focus on:
 1. Hardcoded passwords, API keys, secrets in code
@@ -37,6 +49,7 @@ Focus on:
 3. Unencrypted sensitive data storage
 4. Exposing internal paths/structure in responses
 5. PII (personally identifiable information) leaks
+6. Language-specific data handling risks
 
 For EACH data exposure issue found, respond with this EXACT format:
 Category: Data Exposure
@@ -50,7 +63,7 @@ Only report actual data exposure risks. If data is properly protected, respond w
 """
         }
         
-        prompt_content = f"Analyze this Python code for data exposure:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for data exposure:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             

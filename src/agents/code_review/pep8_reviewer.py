@@ -17,16 +17,20 @@ class PEP8Reviewer(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for PEP 8 style guide violations.
         
         Args:
             code: Python source code to analyze
             context: Optional additional context
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to PEP 8 compliance
         """
+        # PEP 8 only applies to Python
+        if filename and not filename.endswith(".py"):
+            return []
         system_prompt = {
             "role": "system",
             "content": """You are a PEP 8 style guide expert. Analyze code for style violations ONLY.

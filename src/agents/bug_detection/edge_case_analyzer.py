@@ -21,28 +21,42 @@ class EdgeCaseAnalyzer(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for missing edge case handling.
         
         Args:
-            code: Python source code to analyze
+            code: Source code to analyze
+            context: Optional context
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to edge cases
         """
         logger.info(f"[EdgeCaseAnalyzer] Starting analysis on {len(code)} chars of code")
         
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+
         system_prompt = {
             "role": "system",
-            "content": """You are an expert at finding edge case bugs. Analyze for edge case issues ONLY.
+            "content": f"""You are an expert at finding edge case bugs in {language}. Analyze for edge case issues ONLY.
 
 Focus on:
-1. Missing None/null checks before using variables
+1. Missing null/undefined checks
 2. Division by zero possibilities
-3. Empty list/dict access without checking
+3. Empty collection access without checking
 4. Index out of bounds risks
 5. String operations on empty strings
 6. Missing error handling for external calls
+7. Language-specific edge cases
 
 For EACH edge case issue found, respond with this EXACT format:
 Category: Edge Case
@@ -56,7 +70,7 @@ Only report actual edge case vulnerabilities. If edge cases are handled, respond
 """
         }
         
-        prompt_content = f"Analyze this Python code for missing edge cases:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for missing edge cases:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             

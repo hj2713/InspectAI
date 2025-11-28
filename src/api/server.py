@@ -16,8 +16,9 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
-
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+import uvicorn
+import asyncio
+from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -156,6 +157,35 @@ def create_app() -> FastAPI:
             "health": "/health",
             "webhooks": "/webhooks/github"
         }
+    
+    @app.on_event("startup")
+    async def startup_event():
+        """Initialize background tasks."""
+        logger.info("Starting up InspectAI server...")
+        
+        # Schedule Vector Store cleanup
+        async def cleanup_loop():
+            while True:
+                try:
+                    # Wait for 1 hour
+                    await asyncio.sleep(3600)
+                    
+                    # Run cleanup
+                    from src.orchestrator.orchestrator import OrchestratorAgent
+                    # We need access to the vector store. It's inside the orchestrator, 
+                    # but we can also instantiate a temporary one or access via a singleton if we had one.
+                    # For now, let's instantiate a new VectorStore just for cleanup since it's file-based.
+                    from src.memory.vector_store import VectorStore
+                    store = VectorStore()
+                    cleaned = store.cleanup_inactive_repos(retention_hours=24)
+                    if cleaned > 0:
+                        logger.info(f"Cleanup job removed {cleaned} inactive repositories")
+                        
+                except Exception as e:
+                    logger.error(f"Error in cleanup loop: {e}")
+                    await asyncio.sleep(300)  # Retry after 5 mins on error
+
+        asyncio.create_task(cleanup_loop())
     
     @app.get("/health")
     async def health():

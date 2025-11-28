@@ -17,26 +17,40 @@ class QualityReviewer(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for quality issues.
         
         Args:
-            code: Python source code to analyze
-            context: Optional context or additional information for analysis.
+            code: Source code to analyze
+            context: Optional context from vector store
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to code quality
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+            elif filename.endswith(".css"):
+                language = "CSS"
+
         system_prompt = {
             "role": "system",
-            "content": """You are a code quality expert. Analyze code for quality and best practices ONLY.
+            "content": f"""You are a code quality expert. Analyze {language} code for quality and best practices ONLY.
 
 Focus on:
 1. Code complexity (functions too long, too many nested loops)
 2. Readability (unclear logic, missing comments for complex parts)
-3. Best practices (using with for file operations, proper exception handling)
+3. Best practices for {language}
 4. Code smells (duplicated logic within this code, magic numbers)
-5. Pythonic patterns (list comprehensions instead of loops where appropriate)
+5. Language-specific patterns (e.g., Pythonic idioms, modern JS features)
 
 For EACH quality issue found, respond with this EXACT format:
 Category: Code Quality
@@ -50,7 +64,7 @@ Only report actual quality problems. If code quality is good, respond with "No q
 """
         }
         
-        prompt_content = f"Analyze this Python code for quality issues:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for quality issues:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context:\n{context}"
             

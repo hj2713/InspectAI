@@ -17,25 +17,35 @@ class DuplicationDetector(SpecializedAgent):
         from ...llm import get_llm_client_from_config
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for duplication.
         
         Args:
-            code: Python source code to analyze
+            code: Source code to analyze
             context: Optional additional context for the analysis
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to code duplication
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+        
         system_prompt = {
             "role": "system",
-            "content": """You are a code refactoring expert. Analyze code for duplication ONLY.
+            "content": f"""You are a code refactoring expert. Analyze {language} code for duplication ONLY.
 
 Focus on:
-1. Repeated code blocks that could be extracted into functions
+1. Repeated code blocks that could be extracted into functions/components
 2. Similar logic patterns that could be unified
 3. Duplicate string literals that should be constants
-4. Repeated error handling that could be centralized
+4. Repeated error handling or styling that could be centralized
 
 For EACH duplication issue found, respond with this EXACT format:
 Category: Code Duplication
@@ -49,7 +59,7 @@ Only report actual duplication. If there's no duplication, respond with "No dupl
 """
         }
         
-        prompt_content = f"Analyze this Python code for duplication:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for duplication:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context (check against this for duplication):\n{context}"
             

@@ -77,6 +77,7 @@ class VectorStore:
                 metadatas=[metadata],
                 ids=[doc_id]
             )
+            self._update_activity(metadata["repo_id"])
             logger.debug(f"Added document {doc_id} to vector store")
             return doc_id
             
@@ -104,6 +105,8 @@ class VectorStore:
         """
         if not query:
             return []
+            
+        self._update_activity(repo_id)
             
         # Construct filter: MUST match repo_id
         where_filter = {"repo_id": repo_id}
@@ -141,21 +144,71 @@ class VectorStore:
             logger.error(f"Vector search failed: {e}")
             return []
 
-    def delete_repo_data(self, repo_id: str) -> bool:
-        """Delete all data for a specific repository.
+    def _update_activity(self, repo_id: str) -> None:
+        """Update last accessed timestamp for a repository."""
+        import json
+        import time
+        
+        activity_file = Path(self.persist_path) / "repo_activity.json"
+        
+        try:
+            # Load existing activity
+            activity = {}
+            if activity_file.exists():
+                with open(activity_file, "r") as f:
+                    activity = json.load(f)
+            
+            # Update timestamp
+            activity[repo_id] = time.time()
+            
+            # Save back
+            with open(activity_file, "w") as f:
+                json.dump(activity, f)
+                
+        except Exception as e:
+            logger.warning(f"Failed to update repo activity: {e}")
+
+    def cleanup_inactive_repos(self, retention_hours: int = 24) -> int:
+        """Delete data for repositories inactive for retention_hours.
         
         Args:
-            repo_id: Repository ID to clean up
+            retention_hours: Hours of inactivity before deletion
             
         Returns:
-            True if successful
+            Number of repositories cleaned up
         """
+        import json
+        import time
+        
+        activity_file = Path(self.persist_path) / "repo_activity.json"
+        if not activity_file.exists():
+            return 0
+            
+        cleaned_count = 0
+        current_time = time.time()
+        retention_seconds = retention_hours * 3600
+        
         try:
-            self.collection.delete(
-                where={"repo_id": repo_id}
-            )
-            logger.info(f"Deleted all data for repo {repo_id}")
-            return True
+            with open(activity_file, "r") as f:
+                activity = json.load(f)
+            
+            repos_to_delete = []
+            for repo_id, last_active in activity.items():
+                if current_time - last_active > retention_seconds:
+                    repos_to_delete.append(repo_id)
+            
+            for repo_id in repos_to_delete:
+                logger.info(f"Cleaning up inactive repo: {repo_id}")
+                if self.delete_repo_data(repo_id):
+                    del activity[repo_id]
+                    cleaned_count += 1
+            
+            # Save updated activity
+            with open(activity_file, "w") as f:
+                json.dump(activity, f)
+                
+            return cleaned_count
+            
         except Exception as e:
-            logger.error(f"Failed to delete repo data: {e}")
-            return False
+            logger.error(f"Cleanup failed: {e}")
+            return 0

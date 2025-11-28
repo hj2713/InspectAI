@@ -17,26 +17,40 @@ class NamingReviewer(SpecializedAgent):
         cfg = self.config or {}
         self.client = get_llm_client_from_config(cfg)
     
-    def analyze(self, code: str, context: Optional[str] = None) -> List[Finding]:
+    def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code for naming convention violations.
         
         Args:
-            code: Python source code to analyze
-            context: Optional additional context for analysis (e.g., file path, project info)
+            code: Source code to analyze
+            context: Optional context from vector store
+            filename: Optional filename for language detection
             
         Returns:
             List of Finding objects related to naming
         """
+        language = "code"
+        if filename:
+            if filename.endswith(".py"):
+                language = "Python"
+            elif filename.endswith(".js"):
+                language = "JavaScript"
+            elif filename.endswith(".ts"):
+                language = "TypeScript"
+            elif filename.endswith(".html"):
+                language = "HTML"
+            elif filename.endswith(".css"):
+                language = "CSS"
+        
         system_prompt = {
             "role": "system",
-            "content": """You are a Python naming convention expert. Analyze code ONLY for naming issues.
+            "content": f"""You are a {language} naming convention expert. Analyze code ONLY for naming issues.
 
 Focus on:
-1. PEP 8 naming conventions (snake_case for functions/variables, PascalCase for classes)
+1. Standard naming conventions for {language} (e.g., snake_case vs camelCase)
 2. Variable name clarity and descriptiveness  
-3. Avoiding single-letter names (except loop counters i, j, k)
+3. Avoiding single-letter names (except loop counters)
 4. Boolean names should be clear (is_, has_, can_, etc.)
-5. Constant names should be UPPER_CASE
+5. Constant names should be appropriate for the language
 
 For EACH naming issue found, respond with this EXACT format:
 Category: Naming Convention
@@ -50,7 +64,7 @@ Only report actual naming problems. If names are fine, respond with "No naming i
 """
         }
         
-        prompt_content = f"Analyze this Python code for naming convention issues:\n\n```python\n{code}\n```"
+        prompt_content = f"Analyze this {language} code for naming convention issues:\n\n```{language.lower()}\n{code}\n```"
         if context:
             prompt_content += f"\n\nAdditional Context (e.g. project standards, related files):\n{context}"
             
