@@ -27,11 +27,11 @@ def get_provider() -> str:
     3. Fallback to "bytez"
     
     Returns:
-        Provider name ("openai" or "bytez")
+        Provider name ("openai", "bytez", or "gemini")
     """
     # Check environment first
     env_provider = os.getenv("LLM_PROVIDER", "").strip().lower()
-    if env_provider in ["openai", "bytez"]:
+    if env_provider in ["openai", "bytez", "gemini"]:
         return env_provider
     
     # Fallback to config
@@ -41,7 +41,7 @@ def get_provider() -> str:
         # Map "local" to "bytez" since local uses Bytez API
         if provider == "local":
             return "bytez"
-        return provider if provider in ["openai", "bytez"] else "bytez"
+        return provider if provider in ["openai", "bytez", "gemini"] else "bytez"
     except ImportError:
         # Ultimate fallback - use Bytez
         return "bytez"
@@ -66,15 +66,17 @@ def get_model_name(provider: Optional[str] = None) -> str:
     # Provider-specific defaults
     if provider == "openai":
         return os.getenv("OPENAI_MODEL", "gpt-4")
+    elif provider == "gemini":
+        return os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     elif provider in ["bytez", "local"]:
         # Try config first
         try:
-            from config.default_config import QWEN_MODEL_NAME
-            return QWEN_MODEL_NAME
+            from config.default_config import BYTEZ_MODEL
+            return BYTEZ_MODEL
         except ImportError:
-            return "qwen2.5-coder"
+            return "ibm-granite/granite-4.0-h-tiny"
     
-    return "gpt-4"  # Ultimate fallback
+    return "gemini-2.0-flash"  # Ultimate fallback
 
 
 def get_llm_client(

@@ -6,20 +6,23 @@ Change DEFAULT_PROVIDER here, and it affects the ENTIRE project automatically.
 Supported Providers:
 - "openai": OpenAI GPT models (requires OPENAI_API_KEY)
 - "bytez": Bytez API (requires BYTEZ_API_KEY)
-- "local": Local models via Bytez (Qwen, etc.)
+- "gemini": Google Gemini models (requires GEMINI_API_KEY)
 """
 
 # ===================================================================================
 # LLM PROVIDER CONFIGURATION - Change this ONE place to affect entire project
 # ===================================================================================
 
-DEFAULT_PROVIDER = "bytez"  # Options: "openai", "bytez"
+DEFAULT_PROVIDER = "gemini"  # Options: "openai", "bytez", "gemini"
 
 # For OpenAI (when DEFAULT_PROVIDER = "openai")
 OPENAI_MODEL = "gpt-4"  # or "gpt-3.5-turbo", "gpt-4-turbo", etc.
 
 # For Bytez (when DEFAULT_PROVIDER = "bytez")
 BYTEZ_MODEL = "ibm-granite/granite-4.0-h-tiny"  # Primary Bytez model
+
+# For Gemini (when DEFAULT_PROVIDER = "gemini")
+GEMINI_MODEL = "gemini-2.0-flash"  # or "gemini-1.5-pro", "gemini-1.5-flash", etc.
 
 # ===================================================================================
 # AGENT CONFIGURATIONS - These will automatically use DEFAULT_PROVIDER
