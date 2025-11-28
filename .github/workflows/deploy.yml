@@ -10,7 +10,7 @@
 # - GCP_PROJECT_ID: Your Google Cloud project ID
 # - GCP_SA_KEY: Service account JSON key (base64 encoded)
 # - GITHUB_APP_ID: Your GitHub App ID
-# - GITHUB_APP_PRIVATE_KEY: Your GitHub App private key (base64 encoded)
+# - GITHUB_APP_PRIVATE_KEY: Your GitHub App private key
 # - GITHUB_WEBHOOK_SECRET: Your webhook secret
 # - BYTEZ_API_KEY: Your Bytez API key
 
@@ -33,6 +33,7 @@ jobs:
   deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
+    environment: production  # Use secrets from this GitHub Environment
 
     steps:
       # Step 1: Checkout code
@@ -81,7 +82,8 @@ jobs:
             --set-env-vars "GITHUB_WEBHOOK_SECRET=${{ secrets.GITHUB_WEBHOOK_SECRET }}" \
             --set-env-vars "BYTEZ_API_KEY=${{ secrets.BYTEZ_API_KEY }}" \
             --set-env-vars "GITHUB_APP_PRIVATE_KEY=${{ secrets.APP_PRIVATE_KEY }}" \
-            --memory 512Mi \
+            --set-env-vars "LLM_PROVIDER=bytez" \
+            --memory 1Gi \
             --cpu 1 \
             --timeout 300 \
             --min-instances 0 \

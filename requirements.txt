@@ -25,3 +25,7 @@ mypy>=0.990
 
 # LLM providers
 bytez>=0.0.0
+
+# GitHub App authentication
+PyJWT>=2.8.0
+cryptography>=41.0.0
