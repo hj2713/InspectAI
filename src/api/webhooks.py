@@ -160,6 +160,13 @@ def extract_line_number_from_finding(finding: Dict[str, Any]) -> Optional[int]:
     """
     location = finding.get("location", "")
     if not location:
+        # Try to get from line_number field directly
+        line_num = finding.get("line_number") or finding.get("line")
+        if line_num:
+            try:
+                return int(line_num)
+            except (ValueError, TypeError):
+                pass
         return None
     
     # Try various patterns
@@ -176,6 +183,45 @@ def extract_line_number_from_finding(finding: Dict[str, Any]) -> Optional[int]:
             return int(match.group(1))
     
     return None
+
+
+def get_diff_lines_for_file(patch: str) -> set:
+    """Get set of line numbers that are in the diff (added/modified lines).
+    
+    These are the only lines where GitHub allows inline review comments.
+    
+    Args:
+        patch: Git diff patch string for a file
+        
+    Returns:
+        Set of line numbers that are in the diff
+    """
+    if not patch:
+        return set()
+    
+    diff_lines = set()
+    current_line = 0
+    
+    for line in patch.split('\n'):
+        # Parse hunk header: @@ -old_start,old_count +new_start,new_count @@
+        hunk_match = re.match(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
+        if hunk_match:
+            current_line = int(hunk_match.group(1))
+            continue
+        
+        if line.startswith('+') and not line.startswith('+++'):
+            # Added line - this is commentable
+            diff_lines.add(current_line)
+            current_line += 1
+        elif line.startswith('-') and not line.startswith('---'):
+            # Deleted line - don't increment, not on new side
+            pass
+        elif not line.startswith('\\'):  # Skip "\ No newline at end of file"
+            # Context line - also commentable in the diff
+            diff_lines.add(current_line)
+            current_line += 1
+    
+    return diff_lines
 
 
 async def process_pr_review(
@@ -406,6 +452,7 @@ async def _handle_review_command(
                     inline_comments.append({
                         "path": pr_file.filename,
                         "line": valid_line,
+                        "side": "RIGHT",
                         "body": comment_body
                     })
             
@@ -480,14 +527,23 @@ async def _handle_bugs_command(
 ) -> Dict[str, Any]:
     """Handle /inspectai_bugs - Scans WHOLE files for bugs.
     
-    Stores findings in memory for later use by /inspectai_refactor.
-    Posts inline comments on bug locations.
+    Stores findings in memory for later use by /inspectai_fixbugs.
+    Posts inline comments on bug locations that are in the diff.
     """
     logger.info(f"[BUGS] Starting full file bug scan for {repo_full_name}#{pr_number}")
     
     all_bugs: List[BugFinding] = []
     inline_comments = []
+    bugs_not_in_diff = []  # Bugs on lines not in the diff
     files_scanned = 0
+    
+    # Build a map of which lines are in the diff for each file
+    diff_lines_by_file: Dict[str, set] = {}
+    for pr_file in pr.files:
+        if hasattr(pr_file, 'patch') and pr_file.patch:
+            diff_lines_by_file[pr_file.filename] = get_diff_lines_for_file(pr_file.patch)
+        else:
+            diff_lines_by_file[pr_file.filename] = set()
     
     for pr_file in pr.files:
         if pr_file.status == "removed":
@@ -500,6 +556,8 @@ async def _handle_bugs_command(
             # Get FULL file content
             content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
             logger.info(f"[BUGS] Scanning entire file: {pr_file.filename} ({len(content)} bytes)")
+            
+            diff_lines = diff_lines_by_file.get(pr_file.filename, set())
             
             # Run bug detection on entire file
             bugs_result = orchestrator.agents["bug_detection"].process(content)
@@ -526,12 +584,16 @@ async def _handle_bugs_command(
                     )
                     all_bugs.append(finding)
                     
-                    # Create inline comment
-                    inline_comments.append({
-                        "path": pr_file.filename,
-                        "line": line_num,
-                        "body": _format_bug_comment(finding)
-                    })
+                    # Only add inline comment if line is in the diff
+                    if line_num in diff_lines:
+                        inline_comments.append({
+                            "path": pr_file.filename,
+                            "line": line_num,
+                            "side": "RIGHT",
+                            "body": _format_bug_comment(finding)
+                        })
+                    else:
+                        bugs_not_in_diff.append(finding)
             
             # Add security vulnerabilities as bugs too
             for vuln in security_result.get("vulnerabilities", []):
@@ -550,11 +612,15 @@ async def _handle_bugs_command(
                     )
                     all_bugs.append(finding)
                     
-                    inline_comments.append({
-                        "path": pr_file.filename,
-                        "line": line_num,
-                        "body": _format_bug_comment(finding)
-                    })
+                    if line_num in diff_lines:
+                        inline_comments.append({
+                            "path": pr_file.filename,
+                            "line": line_num,
+                            "side": "RIGHT",
+                            "body": _format_bug_comment(finding)
+                        })
+                    else:
+                        bugs_not_in_diff.append(finding)
             
             files_scanned += 1
             
@@ -562,12 +628,12 @@ async def _handle_bugs_command(
             logger.error(f"[BUGS] Failed to scan {pr_file.filename}: {e}", exc_info=True)
             continue
     
-    # Store all bugs in memory for /inspectai_refactor to use
+    # Store all bugs in memory for /inspectai_fixbugs to use
     if all_bugs:
         stored = pr_memory.store_bug_findings(repo_full_name, pr_number, all_bugs)
-        logger.info(f"[BUGS] Stored {stored} bugs in memory for refactor")
+        logger.info(f"[BUGS] Stored {stored} bugs in memory for fixbugs")
     
-    # Post review with inline comments
+    # Build severity summary
     severity_counts = {}
     for bug in all_bugs:
         severity_counts[bug.severity] = severity_counts.get(bug.severity, 0) + 1
@@ -577,6 +643,16 @@ async def _handle_bugs_command(
         for s, c in sorted(severity_counts.items(), key=lambda x: ['critical', 'high', 'medium', 'low'].index(x[0]) if x[0] in ['critical', 'high', 'medium', 'low'] else 4)
     ])
     
+    # Build list of bugs not in diff for the main comment
+    bugs_not_in_diff_text = ""
+    if bugs_not_in_diff:
+        bugs_not_in_diff_text = "\n\n### 📋 Bugs Outside Changed Lines:\n"
+        for bug in bugs_not_in_diff[:10]:  # Limit to 10
+            sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(bug.severity, "⚪")
+            bugs_not_in_diff_text += f"\n- {sev_icon} **{bug.file_path}:{bug.line_number}** - {bug.category}: {bug.description[:100]}..."
+        if len(bugs_not_in_diff) > 10:
+            bugs_not_in_diff_text += f"\n- *...and {len(bugs_not_in_diff) - 10} more*"
+    
     summary = f"""## 🐛 InspectAI Bug Detection
 
 **Triggered by:** @{comment_author}
@@ -585,11 +661,12 @@ async def _handle_bugs_command(
 
 {severity_summary if severity_summary else "✅ No bugs found!"}
 
-{"I've added inline comments on each bug location." if inline_comments else ""}
+{f"I've added **{len(inline_comments)} inline comments** on bugs in changed lines." if inline_comments else ""}
+{bugs_not_in_diff_text}
 
 ---
-{"💡 **Run `/inspectai_refactor` to auto-fix these bugs!**" if all_bugs else ""}
-*Bugs are stored in memory and can be fixed with `/inspectai_refactor`*
+{"💡 **Run `/inspectai_fixbugs` to auto-fix these bugs!**" if all_bugs else ""}
+*Bugs are stored in memory and can be fixed with `/inspectai_fixbugs`*
 """
     
     if inline_comments:
@@ -628,7 +705,16 @@ async def _handle_refactor_command(
     
     all_suggestions = []
     inline_comments = []
+    suggestions_not_in_diff = []
     files_analyzed = 0
+    
+    # Build a map of which lines are in the diff for each file
+    diff_lines_by_file: Dict[str, set] = {}
+    for pr_file in pr.files:
+        if hasattr(pr_file, 'patch') and pr_file.patch:
+            diff_lines_by_file[pr_file.filename] = get_diff_lines_for_file(pr_file.patch)
+        else:
+            diff_lines_by_file[pr_file.filename] = set()
     
     for pr_file in pr.files:
         if pr_file.status == "removed":
@@ -641,6 +727,8 @@ async def _handle_refactor_command(
             content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
             logger.info(f"[REFACTOR] Analyzing {pr_file.filename} for improvements")
             
+            diff_lines = diff_lines_by_file.get(pr_file.filename, set())
+            
             # Run code analysis for refactoring suggestions
             analysis = orchestrator.agents["analysis"].process(content)
             
@@ -650,17 +738,36 @@ async def _handle_refactor_command(
                     all_suggestions.append(suggestion)
                     
                     line_num = extract_line_number_from_finding(suggestion) or 1
-                    inline_comments.append({
-                        "path": pr_file.filename,
-                        "line": line_num,
-                        "body": _format_inline_comment(suggestion)
-                    })
+                    
+                    if line_num in diff_lines:
+                        inline_comments.append({
+                            "path": pr_file.filename,
+                            "line": line_num,
+                            "side": "RIGHT",
+                            "body": _format_inline_comment(suggestion)
+                        })
+                    else:
+                        suggestions_not_in_diff.append({
+                            "file": pr_file.filename,
+                            "line": line_num,
+                            "suggestion": suggestion
+                        })
             
             files_analyzed += 1
             
         except Exception as e:
             logger.error(f"[REFACTOR] Failed to analyze {pr_file.filename}: {e}", exc_info=True)
             continue
+    
+    # Build list of suggestions not in diff
+    suggestions_text = ""
+    if suggestions_not_in_diff:
+        suggestions_text = "\n\n### 📋 Suggestions Outside Changed Lines:\n"
+        for s in suggestions_not_in_diff[:10]:
+            desc = s["suggestion"].get("description", "")[:80]
+            suggestions_text += f"\n- **{s['file']}:{s['line']}** - {desc}..."
+        if len(suggestions_not_in_diff) > 10:
+            suggestions_text += f"\n- *...and {len(suggestions_not_in_diff) - 10} more*"
     
     # Post review with inline comments
     summary = f"""## ♻️ InspectAI Refactor - Code Improvements
@@ -669,7 +776,8 @@ async def _handle_refactor_command(
 **Files Analyzed:** {files_analyzed}
 **Suggestions:** {len(all_suggestions)}
 
-{"I've added inline comments with improvement suggestions." if inline_comments else "✅ Code looks clean! No major improvements needed."}
+{f"I've added **{len(inline_comments)} inline comments** on lines in the diff." if inline_comments else "✅ Code looks clean! No major improvements needed."}
+{suggestions_text}
 
 ---
 *Use `/inspectai_bugs` to detect bugs, then `/inspectai_fixbugs` to auto-fix them.*
