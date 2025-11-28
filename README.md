@@ -238,5 +238,4 @@ This project is part of COMSE6998-015 Fall 2025 coursework.
 
 ## 👥 Team
 
-- Yeshitha (Owner)
 - Himanshu Jhawar
