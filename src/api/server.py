@@ -171,11 +171,8 @@ def create_app() -> FastAPI:
                     await asyncio.sleep(3600)
                     
                     # Run cleanup
-                    from src.orchestrator.orchestrator import OrchestratorAgent
-                    # We need access to the vector store. It's inside the orchestrator, 
-                    # but we can also instantiate a temporary one or access via a singleton if we had one.
-                    # For now, let's instantiate a new VectorStore just for cleanup since it's file-based.
                     from src.memory.vector_store import VectorStore
+                    # Instantiate VectorStore for cleanup (safe as it uses file locking/DB)
                     store = VectorStore()
                     cleaned = store.cleanup_inactive_repos(retention_hours=24)
                     if cleaned > 0:

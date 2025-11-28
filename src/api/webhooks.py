@@ -9,7 +9,6 @@ Commands:
 - /inspectai_review: Reviews ONLY the changed lines in the PR diff
 - /inspectai_bugs: Finds bugs in WHOLE files that have changes
 - /inspectai_refactor: Code improvement suggestions (style, performance, etc.)
-- /inspectai_fixbugs: Auto-fixes bugs found by /inspectai_bugs using memory
 
 Setup:
 1. Create a GitHub App at https://github.com/settings/apps
@@ -368,11 +367,6 @@ async def handle_agent_command(
                     github_client, orchestrator, pr_memory,
                     repo_full_name, pr_number, pr, comment_author
                 )
-            elif command == "fixbugs":
-                return await _handle_fixbugs_command(
-                    github_client, orchestrator, pr_memory,
-                    repo_full_name, pr_number, pr, comment_author
-                )
             else:
                 return {"status": "error", "error": f"Unknown command: {command}"}
             
@@ -545,7 +539,6 @@ async def _handle_bugs_command(
     """Handle /inspectai_bugs - Finds bugs CAUSED BY the changed code.
     
     Focuses on issues introduced by the PR changes, not generic code suggestions.
-    Stores findings in memory for later use by /inspectai_fixbugs.
     """
     logger.info(f"[BUGS] Starting bug scan for changes in {repo_full_name}#{pr_number}")
     
@@ -672,11 +665,6 @@ Only report ACTUAL BUGS introduced by the changed code.
             logger.error(f"[BUGS] Failed to scan {pr_file.filename}: {e}", exc_info=True)
             continue
     
-    # Store all bugs in memory for /inspectai_fixbugs to use
-    if all_bugs:
-        stored = pr_memory.store_bug_findings(repo_full_name, pr_number, all_bugs)
-        logger.info(f"[BUGS] Stored {stored} bugs in memory for fixbugs")
-    
     # Build severity summary
     severity_counts = {}
     for bug in all_bugs:
@@ -696,9 +684,6 @@ Only report ACTUAL BUGS introduced by the changed code.
 {severity_summary if severity_summary else "✅ No issues found in changed code!"}
 
 {f"I've added **{len(inline_comments)} inline comments** on issues introduced by your changes." if inline_comments else ""}
-
----
-{"💡 **Run `/inspectai_fixbugs` to auto-fix these issues!**" if all_bugs else ""}
 """
     
     if inline_comments:
@@ -814,7 +799,7 @@ async def _handle_refactor_command(
 {suggestions_text}
 
 ---
-*Use `/inspectai_bugs` to detect bugs, then `/inspectai_fixbugs` to auto-fix them.*
+*Use `/inspectai_review` for quick code review or `/inspectai_bugs` for deep bug scanning.*
 """
     
     if inline_comments:
@@ -838,181 +823,6 @@ async def _handle_refactor_command(
         return {"status": "success", "suggestions": 0}
 
 
-async def _handle_fixbugs_command(
-    github_client: GitHubClient,
-    orchestrator,
-    pr_memory,
-    repo_full_name: str,
-    pr_number: int,
-    pr,
-    comment_author: str
-) -> Dict[str, Any]:
-    """Handle /inspectai_fixbugs - Auto-fixes bugs and commits to PR.
-    
-    Reads bugs stored by /inspectai_bugs, generates fixes, and commits them.
-    """
-    logger.info(f"[FIXBUGS] Starting auto-fix for {repo_full_name}#{pr_number}")
-    
-    # Get unfixed bugs from memory
-    unfixed_bugs = pr_memory.get_unfixed_bugs(repo_full_name, pr_number)
-    
-    if not unfixed_bugs:
-        message = f"""## 🔧 InspectAI Fix Bugs
-
-**Triggered by:** @{comment_author}
-
-⚠️ **No bugs found to fix!**
-
-Please run `/inspectai_bugs` first to detect bugs, then run `/inspectai_fixbugs` to fix them.
-"""
-        github_client.post_pr_comment(repo_full_name, pr_number, message)
-        return {"status": "no_bugs", "message": "No bugs found"}
-    
-    logger.info(f"[FIXBUGS] Found {len(unfixed_bugs)} unfixed bugs in memory")
-    for i, bug in enumerate(unfixed_bugs):
-        logger.info(f"[FIXBUGS] Bug {i+1}: {bug.file_path}:{bug.line_number} - {bug.category}")
-    
-    # Group bugs by file
-    bugs_by_file: Dict[str, List[BugFinding]] = {}
-    for bug in unfixed_bugs:
-        if bug.file_path not in bugs_by_file:
-            bugs_by_file[bug.file_path] = []
-        bugs_by_file[bug.file_path].append(bug)
-    
-    logger.info(f"[FIXBUGS] Grouped into {len(bugs_by_file)} files: {list(bugs_by_file.keys())}")
-    
-    files_fixed = []
-    files_failed = []
-    
-    for file_path, file_bugs in bugs_by_file.items():
-        logger.info(f"[FIXBUGS] Processing {file_path} with {len(file_bugs)} bugs")
-        try:
-            # Get current file content
-            content = github_client.get_pr_file_content(repo_full_name, pr_number, file_path)
-            logger.info(f"[FIXBUGS] Got file content for {file_path}: {len(content)} chars")
-            
-            # Build detailed fix prompt with all bug info
-            bug_descriptions = "\n".join([
-                f"""Bug {i} (Line {bug.line_number}, {bug.severity}):
-- Category: {bug.category}
-- Description: {bug.description}
-- Suggested Fix: {bug.fix_suggestion}
-- Code Snippet: {bug.code_snippet}"""
-                for i, bug in enumerate(file_bugs, 1)
-            ])
-            
-            # Use code generation agent to generate fixed code
-            fix_prompt = {
-                "code": content,
-                "bugs": bug_descriptions,
-                "suggestions": [b.fix_suggestion for b in file_bugs],
-                "requirements": [
-                    "Apply ALL the suggested fixes to the code",
-                    "Return ONLY the complete fixed code, no explanations",
-                    "Maintain the exact same structure and formatting",
-                    "Do not change anything that is not related to the bugs"
-                ]
-            }
-            
-            logger.info(f"[FIXBUGS] Calling code generation agent for {file_path}")
-            fix_result = orchestrator.agents["generation"].process(fix_prompt)
-            logger.info(f"[FIXBUGS] Got fix result keys: {fix_result.keys() if isinstance(fix_result, dict) else 'not a dict'}")
-            
-            # Extract the fixed code
-            fixed_code = fix_result.get("generated_code") or fix_result.get("raw_analysis", "")
-            logger.info(f"[FIXBUGS] Extracted fixed code: {len(fixed_code)} chars")
-            
-            # Clean up the response - extract just the code
-            if "```" in fixed_code:
-                # Extract code from markdown code blocks
-                import re
-                code_blocks = re.findall(r'```(?:\w+)?\n(.*?)```', fixed_code, re.DOTALL)
-                if code_blocks:
-                    fixed_code = code_blocks[0]
-                    logger.info(f"[FIXBUGS] Extracted from code block: {len(fixed_code)} chars")
-            
-            # Validate we have actual code
-            if not fixed_code or len(fixed_code) < 10:
-                logger.warning(f"[FIXBUGS] Generated code too short for {file_path}: '{fixed_code[:100] if fixed_code else 'empty'}'")
-                files_failed.append({"file": file_path, "reason": "Generated code too short"})
-                continue
-            
-            # Commit the fix to the PR
-            commit_message = f"fix: Apply InspectAI bug fixes to {file_path}\n\nFixed {len(file_bugs)} bug(s):\n" + "\n".join(
-                [f"- {b.category}: {b.description[:50]}..." for b in file_bugs]
-            )
-            
-            logger.info(f"[FIXBUGS] Committing fix to {file_path}...")
-            github_client.update_file_in_pr(
-                repo_url=repo_full_name,
-                pr_number=pr_number,
-                file_path=file_path,
-                new_content=fixed_code,
-                commit_message=commit_message
-            )
-            
-            logger.info(f"[FIXBUGS] Committed fix for {file_path}")
-            files_fixed.append({
-                "file": file_path,
-                "bugs_fixed": len(file_bugs)
-            })
-            
-            # Mark bugs as fixed in memory
-            pr_memory.mark_bugs_fixed(
-                repo_full_name, pr_number, file_path,
-                [b.line_number for b in file_bugs]
-            )
-            
-        except Exception as e:
-            logger.error(f"[FIXBUGS] Failed to fix {file_path}: {e}", exc_info=True)
-            files_failed.append({"file": file_path, "reason": str(e)})
-            continue
-    
-    # Post summary
-    if files_fixed:
-        total_bugs = sum(f["bugs_fixed"] for f in files_fixed)
-        message_parts = [f"""## 🔧 InspectAI Fix Bugs - Fixes Committed!
-
-**Triggered by:** @{comment_author}
-**Files Fixed:** {len(files_fixed)}
-**Total Bugs Fixed:** {total_bugs}
-
-### ✅ Fixed Files:
-"""]
-        
-        for fix in files_fixed:
-            message_parts.append(f"- `{fix['file']}` - {fix['bugs_fixed']} bug(s) fixed\n")
-        
-        if files_failed:
-            message_parts.append("\n### ⚠️ Failed Files:\n")
-            for fail in files_failed:
-                message_parts.append(f"- `{fail['file']}` - {fail['reason']}\n")
-        
-        message_parts.append("""
----
-✨ **Fixes have been committed to this PR!**
-
-Please review the changes and run your tests to verify the fixes.
-""")
-        
-        message = "".join(message_parts)
-        github_client.post_pr_comment(repo_full_name, pr_number, message)
-        return {"status": "success", "files_fixed": len(files_fixed), "bugs_fixed": total_bugs}
-    else:
-        message = f"""## 🔧 InspectAI Fix Bugs
-
-**Triggered by:** @{comment_author}
-
-❌ **Failed to generate and commit fixes.**
-
-{"### Failed Files:" + chr(10) + chr(10).join([f"- `{f['file']}`: {f['reason']}" for f in files_failed]) if files_failed else ""}
-
-Please check the error messages and try again.
-"""
-        github_client.post_pr_comment(repo_full_name, pr_number, message)
-        return {"status": "error", "message": "Failed to generate fixes"}
-
-
 def _format_inline_comment(finding: Dict[str, Any]) -> str:
     """Format a finding as an inline comment."""
     severity = finding.get("severity", "medium")
@@ -1021,21 +831,10 @@ def _format_inline_comment(finding: Dict[str, Any]) -> str:
     category = finding.get("category", "Issue")
     description = finding.get("description", "")
     fix = finding.get("fix_suggestion") or finding.get("fix", "")
-    confidence = finding.get("confidence", 0.5)
     
-    comment = f"""{sev_icon} **{category}** ({severity})
-
-{description}
-"""
-    
+    comment = f"{sev_icon} **{category}** ({severity}): {description}"
     if fix:
-        comment += f"""
-**Suggested Fix:** {fix}
-"""
-    
-    comment += f"""
-*Confidence: {confidence:.0%}*
-"""
+        comment += f"\n**Fix:** {fix}"
     return comment
 
 
@@ -1043,26 +842,11 @@ def _format_bug_comment(bug: BugFinding) -> str:
     """Format a BugFinding as an inline comment."""
     sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(bug.severity, "⚪")
     
-    comment = f"""{sev_icon} **{bug.category}** ({bug.severity})
-
-{bug.description}
-"""
-    
+    comment = f"{sev_icon} **{bug.category}** ({bug.severity}): {bug.description}"
     if bug.fix_suggestion:
-        comment += f"""
-**Suggested Fix:** {bug.fix_suggestion}
-"""
-    
+        comment += f"\n**Fix:** {bug.fix_suggestion}"
     if bug.code_snippet:
-        comment += f"""
-```python
-{bug.code_snippet}
-```
-"""
-    
-    comment += f"""
-*Confidence: {bug.confidence:.0%}*
-"""
+        comment += f"\n```python\n{bug.code_snippet}\n```"
     return comment
 
 
@@ -1187,7 +971,6 @@ def _format_findings_message(
             fix = finding.get("fix_suggestion") or finding.get("fix") or finding.get("remediation", "")
             file = finding.get("file", "unknown")
             location = finding.get("location", "")
-            confidence = finding.get("confidence", 0.0)
             
             sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(severity, "⚪")
             
@@ -1197,7 +980,6 @@ def _format_findings_message(
                 message_parts.append(f"   - Location: {location}\n")
             if fix:
                 message_parts.append(f"   - **Fix:** {fix}\n")
-            message_parts.append(f"   - Confidence: {confidence:.0%}\n\n")
         
         if len(findings) > 10:
             message_parts.append(f"\n*... and {len(findings) - 10} more findings*\n")
@@ -1205,10 +987,9 @@ def _format_findings_message(
     message_parts.append("\n---\n")
     message_parts.append("⚡ *Powered by InspectAI*\n\n")
     message_parts.append("💡 **Available Commands:**\n")
-    message_parts.append("- `/InspectAI_review` - Review diff changes only\n")
-    message_parts.append("- `/InspectAI_bugs` - Scan whole files for bugs\n")
-    message_parts.append("- `/InspectAI_refactor` - Code improvement suggestions\n")
-    message_parts.append("- `/InspectAI_fixbugs` - Auto-fix detected bugs\n")
+    message_parts.append("- `/inspectai_review` - Review diff changes only\n")
+    message_parts.append("- `/inspectai_bugs` - Scan whole files for bugs\n")
+    message_parts.append("- `/inspectai_refactor` - Code improvement suggestions\n")
     
     return "".join(message_parts)
 

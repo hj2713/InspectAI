@@ -88,7 +88,6 @@ class SpecializedAgent(ABC):
         self.client = get_llm_client_from_config(cfg)
         logger.info(f"[{self.__class__.__name__}] LLM client initialized: {type(self.client).__name__}")
     
-    @abstractmethod
     def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
         """Analyze code and return a list of findings.
         
@@ -100,6 +99,8 @@ class SpecializedAgent(ABC):
         Returns:
             List of Finding objects
         """
+        # This base method doesn't implement analysis, but subclasses should use 
+        # the filename to detect language if needed.
         pass
     
     def _extract_code_snippet(self, code: str, line_number: Optional[int] = None, 

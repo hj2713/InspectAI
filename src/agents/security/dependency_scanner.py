@@ -28,18 +28,8 @@ class DependencyScanner(SpecializedAgent):
         Returns:
             List of Finding objects related to dependency issues
         """
-        language = "code"
-        if filename:
-            if filename.endswith(".py"):
-                language = "Python"
-            elif filename.endswith(".js"):
-                language = "JavaScript"
-            elif filename.endswith(".ts"):
-                language = "TypeScript"
-            elif filename.endswith(".html"):
-                language = "HTML"
-            elif filename.endswith(".json"):
-                language = "JSON"
+        from ...utils.language_detection import detect_language
+        language = detect_language(filename)
 
         system_prompt = {
             "role": "system",
