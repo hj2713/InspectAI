@@ -1,5 +1,5 @@
 # GitHub Actions workflow for automatic deployment to Google Cloud Run
-# 
+#
 # This workflow:
 # 1. Triggers on push to main branch
 # 2. Builds a Docker image
@@ -20,8 +20,8 @@ on:
   push:
     branches:
       - main
-      - hj2713  # Also deploy from your branch for testing
-  workflow_dispatch:  # Allow manual trigger
+      - hj2713 # Also deploy from your branch for testing
+  workflow_dispatch: # Allow manual trigger
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -33,7 +33,7 @@ jobs:
   deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
-    
+
     steps:
       # Step 1: Checkout code
       - name: Checkout code
@@ -77,10 +77,10 @@ jobs:
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
-            --set-env-vars "GITHUB_APP_ID=${{ secrets.GITHUB_APP_ID }}" \
+            --set-env-vars "GITHUB_APP_ID=${{ secrets.APP_ID }}" \
             --set-env-vars "GITHUB_WEBHOOK_SECRET=${{ secrets.GITHUB_WEBHOOK_SECRET }}" \
             --set-env-vars "BYTEZ_API_KEY=${{ secrets.BYTEZ_API_KEY }}" \
-            --set-secrets "GITHUB_APP_PRIVATE_KEY=github-app-private-key:latest" \
+            --set-env-vars "GITHUB_APP_PRIVATE_KEY=${{ secrets.APP_PRIVATE_KEY }}" \
             --memory 512Mi \
             --cpu 1 \
             --timeout 300 \
