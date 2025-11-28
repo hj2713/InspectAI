@@ -1,0 +1,132 @@
+# GitHub Actions workflow that proxies webhook events to Cloud Run via OIDC
+#
+# This workflow:
+# 1. Triggers on issue_comment (for /InspectAI commands on PRs)
+# 2. Authenticates to GCP using Workload Identity Federation (OIDC)
+# 3. Calls the Cloud Run webhook endpoint with the event payload
+#
+# This bypasses the need for public access to Cloud Run!
+
+name: Webhook Proxy to Cloud Run
+
+on:
+  issue_comment:
+    types: [created]
+
+env:
+  CLOUD_RUN_URL: https://inspectai-webhook-285554595180.us-central1.run.app
+  WORKLOAD_IDENTITY_PROVIDER: projects/285554595180/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  SERVICE_ACCOUNT: github-invoker@comse6998-479606.iam.gserviceaccount.com
+
+jobs:
+  proxy-webhook:
+    name: Proxy Webhook to Cloud Run
+    runs-on: ubuntu-latest
+    
+    # Only run if comment is on a PR and contains InspectAI command
+    if: |
+      github.event.issue.pull_request && 
+      (contains(github.event.comment.body, '/InspectAI_review') ||
+       contains(github.event.comment.body, '/inspectai_review') ||
+       contains(github.event.comment.body, '/InspectAI_bugs') ||
+       contains(github.event.comment.body, '/inspectai_bugs') ||
+       contains(github.event.comment.body, '/InspectAI_refactor') ||
+       contains(github.event.comment.body, '/inspectai_refactor'))
+    
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Log trigger info
+        run: |
+          echo "🔔 InspectAI command detected!"
+          echo "Comment: ${{ github.event.comment.body }}"
+          echo "PR: #${{ github.event.issue.number }}"
+          echo "Author: ${{ github.event.comment.user.login }}"
+          echo "Repo: ${{ github.repository }}"
+
+      - name: Authenticate to GCP via OIDC
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          token_format: 'id_token'
+          id_token_audience: ${{ env.CLOUD_RUN_URL }}
+          id_token_include_email: true
+
+      - name: Call Cloud Run Webhook
+        run: |
+          # Construct the webhook payload matching GitHub's format
+          PAYLOAD=$(cat << 'EOF'
+          {
+            "action": "created",
+            "issue": {
+              "number": ${{ github.event.issue.number }},
+              "pull_request": {
+                "url": "${{ github.event.issue.pull_request.url }}"
+              }
+            },
+            "comment": {
+              "body": "${{ github.event.comment.body }}",
+              "user": {
+                "login": "${{ github.event.comment.user.login }}",
+                "type": "${{ github.event.comment.user.type }}"
+              }
+            },
+            "repository": {
+              "full_name": "${{ github.repository }}"
+            },
+            "installation": {
+              "id": null
+            }
+          }
+          EOF
+          )
+          
+          echo "📤 Calling Cloud Run webhook..."
+          
+          # Get the identity token for Cloud Run
+          ID_TOKEN="${{ steps.auth.outputs.id_token }}"
+          
+          # Call the webhook endpoint
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${{ env.CLOUD_RUN_URL }}/webhooks/webhook/github" \
+            -H "Authorization: Bearer ${ID_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: issue_comment" \
+            -H "X-GitHub-Delivery: ${{ github.run_id }}" \
+            -d "${PAYLOAD}")
+          
+          # Extract status code
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "Response Code: ${HTTP_CODE}"
+          echo "Response Body: ${BODY}"
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Webhook call successful!"
+          else
+            echo "❌ Webhook call failed with status ${HTTP_CODE}"
+            exit 1
+          fi
+
+      - name: Post acknowledgment comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body.toLowerCase();
+            let command = 'review';
+            if (comment.includes('bugs')) command = 'bugs';
+            if (comment.includes('refactor')) command = 'refactor';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🤖 **InspectAI** is processing your \`${command}\` request...\n\n_This may take a moment._`
+            });
