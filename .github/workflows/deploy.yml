@@ -8,11 +8,15 @@
 #
 # Required GitHub Secrets (set in repo Settings > Secrets):
 # - GCP_PROJECT_ID: Your Google Cloud project ID
-# - GCP_SA_KEY: Service account JSON key (base64 encoded)
+# - GCP_SA_KEY: Service account JSON key (base64 encoded) - for deployment
 # - GITHUB_APP_ID: Your GitHub App ID
 # - GITHUB_APP_PRIVATE_KEY: Your GitHub App private key
 # - GITHUB_WEBHOOK_SECRET: Your webhook secret
 # - BYTEZ_API_KEY: Your Bytez API key
+#
+# OIDC Configuration (for secure webhook invocation):
+# - Workload Identity Provider: projects/285554595180/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+# - Service Account: github-invoker@comse6998-479606.iam.gserviceaccount.com
 
 name: Deploy to Cloud Run
 
@@ -28,12 +32,19 @@ env:
   REGION: us-central1
   SERVICE_NAME: inspectai-webhook
   IMAGE_NAME: inspectai-webhook
+  WORKLOAD_IDENTITY_PROVIDER: projects/285554595180/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  SERVICE_ACCOUNT: github-invoker@comse6998-479606.iam.gserviceaccount.com
 
 jobs:
   deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
     environment: production  # Use secrets from this GitHub Environment
+    
+    # Required for OIDC authentication
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       # Step 1: Checkout code
@@ -94,7 +105,7 @@ jobs:
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/inspectai/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --platform managed \
             --region ${{ env.REGION }} \
-            --allow-unauthenticated \
+            --ingress=all \
             --set-env-vars "GITHUB_APP_ID=${{ secrets.APP_ID }}" \
             --set-env-vars "GITHUB_WEBHOOK_SECRET=${{ secrets.GITHUB_WEBHOOK_SECRET }}" \
             --set-env-vars "BYTEZ_API_KEY=${{ secrets.BYTEZ_API_KEY }}" \
