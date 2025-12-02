@@ -15,7 +15,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-# class LLMClient:
+class LLMClient:
     def __init__(self, default_model: str = "ibm-granite/granite-4.0-h-tiny", default_temperature: float = 0.2, default_max_tokens: int = 1024, provider: str = "bytez"):
         self.default_model = default_model
         self.default_temperature = default_temperature
