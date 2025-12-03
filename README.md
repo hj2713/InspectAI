@@ -42,6 +42,7 @@ Production-grade multi-agent system for automated code review, bug detection, an
 - [Configuration](#-configuration)
 - [Deployment](#-deployment)
 - [Testing](#-testing)
+- [QA Checklist](#-qa-checklist)
 - [Project Structure](#-project-structure)
 - [Contributing](#-contributing)
 - [FAQ](#-faq)
@@ -1556,6 +1557,202 @@ pytest --cov=src tests/
 2. Comment `/inspectai_review`
 3. Verify inline comments on correct lines
 4. React with 👍/👎 to test feedback learning
+
+---
+
+## ✅ QA Checklist
+
+<details>
+<summary><b>Click to expand full QA testing checklist</b></summary>
+
+### Pre-requisites
+- [ ] Bot is deployed and running on Render
+- [ ] GitHub App is installed on test repository
+- [ ] Environment variables are set (GEMINI_API_KEY, GITHUB_TOKEN, SUPABASE_URL, etc.)
+
+---
+
+### 1️⃣ Command Recognition Tests
+
+| Test | Command | Expected Result |
+|------|---------|-----------------|
+| [ ] | `/inspectai_review` | Bot responds, posts inline comments on changed lines |
+| [ ] | `/inspectai_bugs` | Bot responds, scans entire files for bugs |
+| [ ] | `/inspectai_security` | Bot responds, runs 4 security sub-agents |
+| [ ] | `/inspectai_tests` | Bot responds, generates unit tests |
+| [ ] | `/inspectai_docs` | Bot responds, generates docstrings (Python files) |
+| [ ] | `/inspectai_help` | Bot posts help message with all commands |
+| [ ] | Random comment | Bot ignores (no response) |
+| [ ] | Bot's own comment | Bot ignores (no infinite loop) |
+
+---
+
+### 2️⃣ Code Review Quality Tests (`/inspectai_review`)
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | Python file with mutable default arg | Detects `def func(items=[])` bug |
+| [ ] | Python file with bare except | Flags `except:` or `except Exception: pass` |
+| [ ] | JavaScript file with `==` | Suggests using `===` |
+| [ ] | JavaScript file with floating Promise | Detects unawaited async call |
+| [ ] | File with SQL injection | Flags f-string in SQL query |
+| [ ] | File with hardcoded secret | Detects API key/password in code |
+| [ ] | Clean code file | Returns "No issues found" or minimal findings |
+| [ ] | Multi-file PR | Reviews all changed files |
+| [ ] | Large file (500+ lines) | Completes without timeout |
+
+---
+
+### 3️⃣ Bug Detection Tests (`/inspectai_bugs`)
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | Off-by-one error in loop | Detects boundary issue |
+| [ ] | Null/None dereference | Flags missing null check |
+| [ ] | Type coercion bug | Detects `int(user_input)` without try/except |
+| [ ] | Race condition pattern | Flags concurrent access issue |
+| [ ] | Resource leak | Detects unclosed file/connection |
+
+---
+
+### 4️⃣ Security Scan Tests (`/inspectai_security`)
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | SQL injection | Flags string formatting in queries |
+| [ ] | Command injection | Flags `os.system()` with user input |
+| [ ] | XSS (JavaScript) | Flags `innerHTML` with user data |
+| [ ] | Hardcoded credentials | Detects password/API key in code |
+| [ ] | Pickle deserialization | Flags `pickle.loads(untrusted)` |
+| [ ] | Path traversal | Flags `open(user_path)` without validation |
+| [ ] | Safe code (ORM, parameterized) | No false positives |
+
+---
+
+### 5️⃣ Test Generation (`/inspectai_tests`)
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | Python function | Generates pytest test cases |
+| [ ] | JavaScript function | Generates Jest/Mocha tests |
+| [ ] | Class with methods | Generates tests for each method |
+| [ ] | Edge cases covered | Tests include null, empty, boundary values |
+
+---
+
+### 6️⃣ Documentation (`/inspectai_docs`)
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | Python file without docstrings | Generates Google-style docstrings |
+| [ ] | Function with params | Documents parameters and return type |
+| [ ] | Non-Python file | Skips gracefully (only Python supported) |
+
+---
+
+### 7️⃣ Error Handling Tests
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | One file fails analysis | Other files still reviewed (partial success) |
+| [ ] | LLM API timeout | User-friendly error message posted |
+| [ ] | Invalid file content | Graceful skip, no crash |
+| [ ] | Empty PR (no code changes) | Appropriate message ("No code files to review") |
+| [ ] | Binary files in PR | Skipped automatically |
+
+---
+
+### 8️⃣ Feedback System Tests
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | React 👍 to comment | Feedback stored in Supabase |
+| [ ] | React 👎 to comment | Feedback stored, affects future filtering |
+| [ ] | Reply to comment | Reply text captured as feedback |
+| [ ] | Similar issue in new PR | Previously 👎 patterns filtered out |
+
+---
+
+### 9️⃣ Multi-Language Support
+
+| Language | Test File | Commands to Test |
+|----------|-----------|------------------|
+| [ ] Python | `.py` | All commands |
+| [ ] JavaScript | `.js` | review, bugs, security |
+| [ ] TypeScript | `.ts` | review, bugs, security |
+| [ ] Java | `.java` | review, bugs |
+| [ ] Go | `.go` | review, bugs |
+| [ ] Rust | `.rs` | review |
+| [ ] C/C++ | `.c`, `.cpp` | review |
+
+---
+
+### 🔟 Performance Tests
+
+| Test | Metric | Target |
+|------|--------|--------|
+| [ ] | Single file review | < 30 seconds |
+| [ ] | 5 file PR review | < 60 seconds |
+| [ ] | 10 file PR review | < 120 seconds |
+| [ ] | Memory usage | No OOM on Render free tier |
+
+---
+
+### 1️⃣1️⃣ Edge Cases
+
+| Test | Scenario | Expected Result |
+|------|----------|-----------------|
+| [ ] | PR with only deleted files | Appropriate message |
+| [ ] | PR with renamed files | Reviews new content |
+| [ ] | PR with 50+ files | Handles or limits gracefully |
+| [ ] | File with non-UTF8 encoding | No crash |
+| [ ] | Very long single line | Handles without issue |
+| [ ] | Empty file | Skips gracefully |
+
+---
+
+### Quick Smoke Test (5 minutes)
+
+1. [ ] Create PR with intentional bug: `def test(items=[]): pass`
+2. [ ] Comment `/inspectai_review`
+3. [ ] Verify bot responds with mutable default arg warning
+4. [ ] Comment `/inspectai_help`
+5. [ ] Verify help message appears
+6. [ ] React 👎 to a comment
+7. [ ] Check Supabase for feedback entry
+
+---
+
+### Test PR Template
+
+Create a test file with these intentional issues:
+
+```python
+# test_qa.py - QA Test File
+import os
+import pickle
+
+def process_data(items=[], cache={}):  # Mutable defaults
+    try:
+        result = int(input("Enter number: "))  # No validation
+    except:  # Bare except
+        pass  # Swallowing exception
+    
+    query = f"SELECT * FROM users WHERE id = {result}"  # SQL injection
+    os.system(f"echo {result}")  # Command injection
+    
+    data = pickle.loads(user_input)  # Unsafe deserialization
+    
+    API_KEY = "sk-1234567890abcdef"  # Hardcoded secret
+    
+    f = open("file.txt")  # No context manager
+    content = f.read()
+    # Missing f.close()
+    
+    return content
+```
+
+</details>
 
 ---
 
