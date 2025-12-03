@@ -190,11 +190,12 @@ class LLMClient:
         logger.debug(f"[LLMClient._chat_gemini] URL: {url}")
         
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            # Increased timeout to 120 seconds for large file analysis
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
             logger.info(f"[LLMClient._chat_gemini] Response status code: {response.status_code}")
         except requests.exceptions.Timeout:
-            logger.error("[LLMClient._chat_gemini] Request timed out after 60 seconds")
-            raise Exception("Gemini API request timed out")
+            logger.error("[LLMClient._chat_gemini] Request timed out after 120 seconds")
+            raise Exception("Gemini API request timed out after 120 seconds")
         except requests.exceptions.RequestException as e:
             logger.error(f"[LLMClient._chat_gemini] Request failed: {e}")
             raise

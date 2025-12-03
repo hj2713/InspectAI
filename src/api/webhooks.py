@@ -1569,81 +1569,107 @@ async def _handle_tests_command(
     files_processed = 0
     files_failed = 0
     
-    for pr_file in pr.files:
-        if pr_file.status == "removed":
-            continue
-        
-        if not orchestrator._is_code_file(pr_file.filename):
-            continue
-        
-        # Focus on Python files for now
-        if not pr_file.filename.endswith('.py'):
-            continue
-        
-        try:
-            content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
-            diff_patch = pr_file.patch if hasattr(pr_file, 'patch') else ""
-            
-            logger.info(f"[TESTS] Generating tests for {pr_file.filename}")
-            
-            # Run test generation
-            test_result = orchestrator._safe_execute_agent("test_generation", {
-                "code": content,
-                "framework": "pytest",
-                "coverage_focus": ["happy_path", "edge_cases", "error_handling"],
-                "diff_context": diff_patch
-            })
-            
-            if test_result.get("status") == "error":
-                logger.warning(f"[TESTS] Generation failed for {pr_file.filename}: {test_result.get('error_message')}")
-                files_failed += 1
+    try:
+        for pr_file in pr.files:
+            if pr_file.status == "removed":
                 continue
             
-            test_code = test_result.get("test_code", "")
-            if test_code:
-                generated_tests.append({
-                    "file": pr_file.filename,
-                    "test_file": f"test_{pr_file.filename.split('/')[-1]}",
-                    "test_code": test_code,
-                    "descriptions": test_result.get("test_descriptions", [])
+            if not orchestrator._is_code_file(pr_file.filename):
+                continue
+            
+            # Focus on Python files for now
+            if not pr_file.filename.endswith('.py'):
+                continue
+            
+            try:
+                content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
+                diff_patch = pr_file.patch if hasattr(pr_file, 'patch') else ""
+                
+                logger.info(f"[TESTS] Generating tests for {pr_file.filename}")
+                
+                # Run test generation with timeout handling
+                test_result = orchestrator._safe_execute_agent("test_generation", {
+                    "code": content,
+                    "framework": "pytest",
+                    "coverage_focus": ["happy_path", "edge_cases", "error_handling"],
+                    "diff_context": diff_patch
                 })
-            
-            files_processed += 1
-            
-        except Exception as e:
-            logger.error(f"[TESTS] Failed to process {pr_file.filename}: {e}", exc_info=True)
-            files_failed += 1
-            continue
-    
-    # Build summary comment
-    summary = f"""## 🧪 InspectAI Test Generation
+                
+                if test_result.get("status") == "error":
+                    logger.warning(f"[TESTS] Generation failed for {pr_file.filename}: {test_result.get('error_message')}")
+                    files_failed += 1
+                    continue
+                
+                test_code = test_result.get("test_code", "")
+                if test_code:
+                    generated_tests.append({
+                        "file": pr_file.filename,
+                        "test_file": f"test_{pr_file.filename.split('/')[-1]}",
+                        "test_code": test_code,
+                        "descriptions": test_result.get("test_descriptions", [])
+                    })
+                    logger.info(f"[TESTS] Generated tests for {pr_file.filename} ({len(test_code)} chars)")
+                
+                files_processed += 1
+                
+            except Exception as e:
+                logger.error(f"[TESTS] Failed to process {pr_file.filename}: {e}", exc_info=True)
+                files_failed += 1
+                continue
+        
+        # Build summary comment
+        summary = f"""## 🧪 InspectAI Test Generation
 
 **Triggered by:** @{comment_author}
 **Files Processed:** {files_processed}
 **Test Files Generated:** {len(generated_tests)}
 
 """
-    
-    if generated_tests:
-        summary += "### Generated Tests\n\n"
-        for test in generated_tests:
-            summary += f"<details>\n<summary>📝 <code>{test['test_file']}</code> (for {test['file']})</summary>\n\n"
-            summary += f"```python\n{test['test_code'][:3000]}\n```\n"
-            if len(test['test_code']) > 3000:
-                summary += f"\n*... truncated (full file is {len(test['test_code'])} chars)*\n"
-            summary += "\n</details>\n\n"
-    else:
-        summary += "ℹ️ No tests could be generated. This might be because:\n"
-        summary += "- No Python files were changed\n"
-        summary += "- The changed code doesn't have testable functions\n"
-    
-    if files_failed > 0:
-        summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be processed.\n"
-    
-    summary += "\n---\n*Copy the generated tests to your test directory and run `pytest` to verify.*\n"
-    
-    github_client.post_pr_comment(repo_full_name, pr_number, summary)
-    return {"status": "success", "tests_generated": len(generated_tests)}
+        
+        if generated_tests:
+            summary += "### Generated Tests\n\n"
+            for test in generated_tests:
+                summary += f"<details>\n<summary>📝 <code>{test['test_file']}</code> (for {test['file']})</summary>\n\n"
+                summary += f"```python\n{test['test_code'][:3000]}\n```\n"
+                if len(test['test_code']) > 3000:
+                    summary += f"\n*... truncated (full file is {len(test['test_code'])} chars)*\n"
+                summary += "\n</details>\n\n"
+        else:
+            summary += "ℹ️ No tests could be generated. This might be because:\n"
+            summary += "- No Python files were changed\n"
+            summary += "- The changed code doesn't have testable functions\n"
+        
+        if files_failed > 0:
+            summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be processed.\n"
+        
+        summary += "\n---\n*Copy the generated tests to your test directory and run `pytest` to verify.*\n"
+        
+        logger.info(f"[TESTS] Posting summary comment to PR #{pr_number}")
+        github_client.post_pr_comment(repo_full_name, pr_number, summary)
+        logger.info(f"[TESTS] Successfully posted test generation results")
+        return {"status": "success", "tests_generated": len(generated_tests)}
+        
+    except Exception as e:
+        logger.error(f"[TESTS] Unhandled error in test generation: {e}", exc_info=True)
+        # Try to post error message to PR
+        try:
+            error_msg = f"""## 🧪 InspectAI Test Generation
+
+**Triggered by:** @{comment_author}
+
+❌ **Error:** Test generation failed due to an unexpected error.
+
+```
+{str(e)[:500]}
+```
+
+Please try again or report this issue.
+"""
+            github_client.post_pr_comment(repo_full_name, pr_number, error_msg)
+        except Exception as post_error:
+            logger.error(f"[TESTS] Failed to post error message: {post_error}")
+        
+        return {"status": "error", "error": str(e)}
 
 
 async def _handle_docs_command(
