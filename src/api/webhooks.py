@@ -2386,6 +2386,8 @@ async def github_webhook(
         action = payload.get("action")
         comment = payload.get("comment", {})
         
+        logger.info(f"[FEEDBACK-DEBUG] Received pull_request_review_comment event, action={action}")
+        
         # Only process new comments that are replies
         if action == "created":
             in_reply_to_id = comment.get("in_reply_to_id")
@@ -2393,6 +2395,13 @@ async def github_webhook(
             commenter = comment.get("user", {}).get("login", "")
             repo = payload.get("repository", {})
             repo_full_name = repo.get("full_name", "unknown/unknown")
+            
+            logger.info(
+                f"[FEEDBACK-DEBUG] Comment details: "
+                f"in_reply_to_id={in_reply_to_id}, "
+                f"commenter={commenter}, "
+                f"body='{comment_body[:100]}...'"
+            )
             pull_request = payload.get("pull_request", {})
             pr_number = pull_request.get("number", 0)
             
