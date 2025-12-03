@@ -18,22 +18,6 @@ class TestGenerationAgent(BaseAgent):
         self.client = get_llm_client_from_config(cfg)
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Generate test cases for the provided code.
-        
-        Args:
-            input_data: Dict containing:
-                - code: Source code to generate tests for
-                - framework: Test framework to use (pytest, unittest, etc.)
-                - coverage_focus: Areas to focus on (edge_cases, happy_path, etc.)
-            
-        Returns:
-            Dict containing generated test code and test descriptions
-        """
-        code = input_data.get("code", "")
-        framework = input_data.get("framework", "pytest")
-        coverage_focus = input_data.get("coverage_focus", ["happy_path", "edge_cases", "error_handling"])
-        
         if isinstance(coverage_focus, list):
             coverage_focus = ", ".join(coverage_focus)
         
