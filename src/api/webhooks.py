@@ -41,6 +41,7 @@ from ..utils.error_handler import (
     GracefulErrorHandler
 )
 from ..feedback.feedback_system import get_feedback_system
+from ..indexer import trigger_repo_indexing, get_context_enricher
 
 logger = get_logger(__name__)
 
@@ -99,6 +100,78 @@ def is_duplicate_event(delivery_id: str) -> bool:
     
     _processed_events[delivery_id] = datetime.now()
     return False
+
+
+async def _check_contents_permission(github_client: GitHubClient, repo_full_name: str) -> bool:
+    """Check if we have permission to read repository contents.
+    
+    This is needed for codebase indexing. If not granted, we gracefully
+    skip indexing and use default PR-only review behavior.
+    
+    Args:
+        github_client: GitHub client instance
+        repo_full_name: Full repository name
+        
+    Returns:
+        True if we have contents:read permission, False otherwise
+    """
+    try:
+        # Try to access root directory - this will fail if no contents permission
+        owner, repo = repo_full_name.split("/")
+        # Use a lightweight API call to check access
+        github_client.get_repo_contents(owner, repo, "")
+        return True
+    except Exception as e:
+        error_str = str(e).lower()
+        if "403" in error_str or "permission" in error_str or "not found" in error_str:
+            logger.info(
+                f"No contents:read permission for {repo_full_name}. "
+                "Codebase indexing skipped. To enable, grant 'Contents: Read' permission in GitHub App settings."
+            )
+            return False
+        # Other errors - log but assume no permission to be safe
+        logger.warning(f"Could not verify contents permission for {repo_full_name}: {e}")
+        return False
+
+
+async def _trigger_background_indexing(repo_full_name: str, installation_id: int):
+    """Trigger background codebase indexing for a repository.
+    
+    This runs asynchronously and doesn't block the webhook response.
+    Only triggers if we have contents:read permission.
+    
+    Args:
+        repo_full_name: Full repository name (owner/repo)
+        installation_id: GitHub App installation ID
+    """
+    try:
+        # Create GitHub client
+        github_client = GitHubClient.from_installation(installation_id)
+        
+        # Check if we have permission to read repository contents
+        has_permission = await _check_contents_permission(github_client, repo_full_name)
+        
+        if not has_permission:
+            logger.info(
+                f"Skipping codebase indexing for {repo_full_name} - "
+                "contents permission not granted. PR reviews will work normally."
+            )
+            return None
+        
+        # Trigger indexing (runs in background)
+        job_id = await trigger_repo_indexing(
+            repo_full_name=repo_full_name,
+            github_client=github_client,
+            installation_id=installation_id
+        )
+        
+        if job_id:
+            logger.info(f"Background indexing started for {repo_full_name} (job: {job_id})")
+        else:
+            logger.warning(f"Failed to start indexing for {repo_full_name}")
+            
+    except Exception as e:
+        logger.error(f"Error triggering indexing for {repo_full_name}: {e}")
 
 
 def parse_diff_for_changed_lines(patch: str) -> List[Tuple[int, int, str]]:
@@ -397,8 +470,34 @@ async def _handle_review_command(
     
     Posts inline comments on specific lines that have issues.
     Focuses on issues INTRODUCED by the changes, not general code improvements.
+    Uses codebase indexing to provide context about callers/dependencies.
     """
     logger.info(f"[REVIEW] Starting diff-only review for {repo_full_name}#{pr_number}")
+    
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    # Get codebase context for changed files
+    context_enricher = get_context_enricher()
+    codebase_context = {}
+    
+    try:
+        # Collect changed files for context enrichment
+        changed_files = []
+        for pr_file in pr.files:
+            if pr_file.status != "removed" and orchestrator._is_code_file(pr_file.filename):
+                changed_files.append(pr_file.filename)
+        
+        # Get enriched context (callers, dependencies, impact)
+        if changed_files:
+            codebase_context = await context_enricher.enrich_pr_context(
+                repo_full_name=repo_full_name,
+                changed_files=changed_files,
+                diff_content="\n".join([f.patch for f in pr.files if f.patch])
+            )
+            logger.info(f"[REVIEW] Enriched context for {len(changed_files)} files: {len(codebase_context.get('context_summary', []))} items")
+    except Exception as e:
+        logger.warning(f"[REVIEW] Could not get codebase context: {e}")
+        # Continue without enriched context - graceful degradation
     
     from concurrent.futures import ThreadPoolExecutor, as_completed
     
@@ -420,6 +519,33 @@ async def _handle_review_command(
             # Get file content
             content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
             
+            # Get file-specific codebase context
+            file_context_str = ""
+            file_context = codebase_context.get("file_contexts", {}).get(pr_file.filename, {})
+            if file_context:
+                context_items = []
+                
+                # Add callers info
+                for symbol, callers in file_context.get("callers", {}).items():
+                    if callers:
+                        context_items.append(f"- `{symbol}` is called by: {', '.join(callers[:5])}")
+                
+                # Add dependencies info
+                for symbol, deps in file_context.get("dependencies", {}).items():
+                    if deps:
+                        context_items.append(f"- `{symbol}` depends on: {', '.join(deps[:5])}")
+                
+                # Add impact score
+                impact = file_context.get("impact_score", 0)
+                if impact > 5:
+                    context_items.append(f"- ⚠️ HIGH IMPACT: Changes may affect {impact} other places in codebase")
+                
+                if context_items:
+                    file_context_str = f"""
+CODEBASE CONTEXT (from indexed repository):
+{chr(10).join(context_items)}
+"""
+            
             # Build diff context for the LLM
             diff_context = f"""FILE: {pr_file.filename}
 DIFF PATCH (shows what was changed with + for additions, - for removals):
@@ -433,13 +559,14 @@ FULL FILE CONTEXT:
 ```
 
 CHANGED LINE RANGES: {', '.join([f'{s}-{e}' for s, e, _ in changed_ranges])}
-
+{file_context_str}
 IMPORTANT INSTRUCTIONS:
 1. ONLY report issues that are CAUSED BY or INTRODUCED BY the changes shown in the diff
 2. Do NOT suggest general improvements to unchanged code
 3. Focus on: bugs introduced by changes, missing error handling for new code, logic errors in changed code
 4. If the changed code looks correct, report nothing - do not nitpick
 5. Each issue MUST include the exact line number from the changed ranges above
+6. If codebase context shows this function has many callers, be extra careful about breaking changes
 """
             
             logger.info(f"[REVIEW] Analyzing {len(changed_ranges)} changed regions in {pr_file.filename}")
@@ -1241,6 +1368,63 @@ async def github_webhook(
             "zen": payload.get("zen", ""),
             "hook_id": payload.get("hook_id")
         }
+    
+    # Handle installation events (GitHub App installed/uninstalled)
+    if event_type == "installation":
+        action = payload.get("action", "")
+        installation = payload.get("installation", {})
+        installation_id = installation.get("id")
+        repositories = payload.get("repositories", [])
+        
+        if action == "created":
+            logger.info(f"GitHub App installed (installation: {installation_id})")
+            
+            # Start background indexing for all repositories
+            for repo in repositories:
+                repo_full_name = repo.get("full_name")
+                if repo_full_name:
+                    logger.info(f"Triggering codebase indexing for {repo_full_name}")
+                    background_tasks.add_task(
+                        _trigger_background_indexing,
+                        repo_full_name,
+                        installation_id
+                    )
+            
+            return {
+                "status": "ok",
+                "message": f"Installation created. Indexing {len(repositories)} repositories.",
+                "installation_id": installation_id
+            }
+        
+        elif action == "deleted":
+            logger.info(f"GitHub App uninstalled (installation: {installation_id})")
+            return {"status": "ok", "message": "Installation deleted"}
+        
+        return {"status": "ok", "message": f"Installation action '{action}' received"}
+    
+    # Handle installation_repositories events (repos added/removed from installation)
+    if event_type == "installation_repositories":
+        action = payload.get("action", "")
+        installation_id = payload.get("installation", {}).get("id")
+        
+        if action == "added":
+            repos_added = payload.get("repositories_added", [])
+            for repo in repos_added:
+                repo_full_name = repo.get("full_name")
+                if repo_full_name:
+                    logger.info(f"Repository added to installation: {repo_full_name}")
+                    background_tasks.add_task(
+                        _trigger_background_indexing,
+                        repo_full_name,
+                        installation_id
+                    )
+            
+            return {
+                "status": "ok",
+                "message": f"Added {len(repos_added)} repositories. Indexing started."
+            }
+        
+        return {"status": "ok", "message": f"Repository action '{action}' received"}
     
     # Handle pull_request events
     if event_type == "pull_request":
