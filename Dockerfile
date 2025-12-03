@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Pre-download ChromaDB embedding model (if ChromaDB installed) to avoid repeated downloads
 # This caches the ~80MB all-MiniLM-L6-v2 model in the Docker image
-RUN python -c "try:\n    from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2\n    ONNXMiniLM_L6_V2()\n    print('ChromaDB model cached')\nexcept ImportError:\n    print('ChromaDB not installed, skipping model cache')"
+RUN python -c "from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2; ONNXMiniLM_L6_V2(); print('ChromaDB model cached')" || echo "ChromaDB not installed, skipping model cache"
 
 # Copy application code
 COPY . .
