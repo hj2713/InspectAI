@@ -2631,7 +2631,26 @@ async def github_webhook(
                         original_comment_body = original_comment.get("body", "")
                         logger.info(f"[FEEDBACK-DEBUG] Original comment body (first 100 chars): {original_comment_body[:100] if original_comment_body else 'None'}...")
                         # Check if it's our bot's comment (contains InspectAI markers)
-                        if "inspectai" not in original_comment_body.lower() and "🔍" not in original_comment_body:
+                        # InspectAI comments use severity emojis: 🔴 (critical), 🟠 (high), 🟡 (medium), 🟢 (low), 🔵 (info)
+                        # Or contain "inspectai" or common InspectAI patterns
+                        inspectai_markers = [
+                            "inspectai",  # Brand name
+                            "🔍",  # Search/analysis emoji
+                            "🔴",  # Critical severity
+                            "🟠",  # High severity  
+                            "🟡",  # Medium severity
+                            "🟢",  # Low severity
+                            "🔵",  # Info severity
+                            "**Security:",  # Security findings
+                            "**Bug:",  # Bug findings
+                            "**Style:",  # Style findings
+                            "**Performance:",  # Performance findings
+                        ]
+                        is_inspectai_comment = any(
+                            marker in original_comment_body or marker.lower() in original_comment_body.lower()
+                            for marker in inspectai_markers
+                        )
+                        if not is_inspectai_comment:
                             # Not our comment, ignore
                             logger.info(f"[FEEDBACK-DEBUG] Original comment is NOT an InspectAI comment, ignoring feedback")
                             return {
