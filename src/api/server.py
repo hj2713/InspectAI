@@ -285,7 +285,7 @@ def create_app() -> FastAPI:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     
-    @app.get("/tasks")
+    @app.get("/tasksabcdas")
     async def list_task_types():
         """List all supported task types."""
         return {
