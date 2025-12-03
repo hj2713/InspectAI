@@ -63,6 +63,12 @@ ORCHESTRATOR_CONFIG = {
         "temperature": 0.3,
         "max_tokens": 16000,
         "confidence_threshold": 0.5
+    },
+    "pr_description": {
+        "temperature": 0.3,
+        "max_tokens": 2000,
+        "confidence_threshold": 0.5,
+        "provider": DEFAULT_PROVIDER
     }
 }
 
