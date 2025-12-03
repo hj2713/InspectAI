@@ -1286,28 +1286,7 @@ class HallucinationFilter(BaseFilter):
 
 ---
 
-### Issue 7: Git Push Rejected (Remote Changes)
-
-**Problem**: `git push` failed because remote had commits not in local.
-
-```
-error: failed to push some refs to 'github.com/hj2713/InspectAI.git'
-hint: Updates were rejected because the remote contains work that you do
-hint: not have locally.
-```
-
-**Solution**: Rebase before push.
-
-```bash
-git pull origin main --rebase
-git push origin main
-```
-
-**Lesson Learned**: Always pull with rebase before pushing to shared branches.
-
----
-
-### Issue 8: Rate Limiting on LLM APIs
+### Issue 7: Rate Limiting on LLM APIs
 
 **Problem**: High-volume PRs hit API rate limits.
 
@@ -2042,7 +2021,31 @@ comment["confidence"] = min(comment["confidence"] * 1.2, 1.0)
 
 ## 🙏 Acknowledgments
 
-- **Architecture Inspiration**: [Ellipsis.dev](https://www.ellipsis.dev/blog/how-we-built-ellipsis)
-- **LLM Provider**: [Google Gemini](https://ai.google.dev/)
-- **Deployment**: [Render](https://render.com)
-- **Database**: [Supabase](https://supabase.com)
+### Core Services
+| Service | Provider | Purpose |
+|---------|----------|----------|
+| **Primary LLM** | [Google Gemini](https://ai.google.dev/) | Code analysis with Gemini 2.0-flash |
+| **Alternative LLM** | [OpenAI](https://openai.com/) | GPT-4 fallback provider |
+| **Lightweight LLM** | [Bytez](https://bytez.com/) | Granite model for fast inference |
+| **Database** | [Supabase](https://supabase.com/) | PostgreSQL + pgvector for feedback & embeddings |
+| **Deployment** | [Render](https://render.com/) | Cloud hosting with auto-deploy |
+| **Alternative Cloud** | [Google Cloud Platform](https://cloud.google.com/) | Cloud Run deployment option |
+
+### Libraries & Tools
+| Library | Purpose |
+|---------|----------|
+| [FastAPI](https://fastapi.tiangolo.com/) | High-performance async web framework |
+| [sentence-transformers](https://www.sbert.net/) | Free local embeddings (all-MiniLM-L6-v2) |
+| [ChromaDB](https://www.trychroma.com/) | Vector database (legacy, migrated to Supabase) |
+| [PyGithub](https://pygithub.readthedocs.io/) | GitHub API integration |
+| [unidiff](https://github.com/matiasb/python-unidiff) | Git diff parsing |
+| [tiktoken](https://github.com/openai/tiktoken) | Token counting for LLM context management |
+| [tenacity](https://tenacity.readthedocs.io/) | Retry logic with exponential backoff |
+| [Pydantic](https://docs.pydantic.dev/) | Data validation and settings management |
+
+### Inspiration & Learning
+| Resource | Contribution |
+|----------|-------------|
+| [Ellipsis.dev](https://www.ellipsis.dev/blog/how-we-built-ellipsis) | Architecture patterns for AI code review |
+| [OWASP Top 10](https://owasp.org/www-project-top-ten/) | Security vulnerability classifications |
+| [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) | Docstring format standards |
