@@ -698,21 +698,28 @@ IMPORTANT INSTRUCTIONS:
                 logger.warning(f"[REVIEW] Analysis failed for {pr_file.filename}: {analysis.get('error_message')}")
                 return []  # Return empty instead of crashing
             
-            # Create inline comments for findings
+            # Create inline comments for findings - only for lines actually in the diff
             file_comments = []
             for suggestion in analysis.get("suggestions", []):
                 if isinstance(suggestion, dict):
-                    line_num = extract_line_number_from_finding(suggestion) or changed_ranges[0][0]
+                    line_num = extract_line_number_from_finding(suggestion)
                     
-                    # Ensure line is in valid range for this file's diff
+                    # Skip findings without a valid line number
+                    if not line_num:
+                        logger.debug(f"[REVIEW] Skipping finding without line number: {suggestion.get('description', '')[:50]}")
+                        continue
+                    
+                    # Check if line is actually in the diff - skip if not
                     valid_line = None
                     for start, end, _ in changed_ranges:
                         if start <= line_num <= end:
                             valid_line = line_num
                             break
                     
+                    # Skip findings on lines that weren't changed (prevents irrelevant comments)
                     if valid_line is None:
-                        valid_line = changed_ranges[0][0]
+                        logger.debug(f"[REVIEW] Skipping finding on unchanged line {line_num}: {suggestion.get('description', '')[:50]}")
+                        continue
                     
                     comment_body = _format_inline_comment(suggestion)
                     file_comments.append({
