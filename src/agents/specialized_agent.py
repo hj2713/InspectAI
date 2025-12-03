@@ -122,13 +122,21 @@ class SpecializedAgent(ABC):
         """Extract a code snippet with context for evidence.
         
         Args:
-            code: Full source code
+            code: Full source code (string or tuple - handles both)
             line_number: Line number to extract (1-indexed)
             context_lines: Number of context lines before/after
             
         Returns:
             Code snippet with context
         """
+        # Handle tuple case (sometimes code comes as (filename, content) tuple)
+        if isinstance(code, tuple):
+            code = code[1] if len(code) > 1 else str(code[0]) if code else ""
+        
+        # Ensure code is a string
+        if not isinstance(code, str):
+            code = str(code) if code else ""
+        
         if line_number is None:
             return code[:200]  # Return first 200 chars as fallback
         
