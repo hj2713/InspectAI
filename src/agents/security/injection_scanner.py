@@ -33,25 +33,33 @@ class InjectionScanner(SpecializedAgent):
 
         system_prompt = {
             "role": "system",
-            "content": f"""You are a security expert specializing in injection attacks in {language}. Analyze for injection vulnerabilities ONLY.
+            "content": f"""You are a STRICT security expert analyzing {language} code for REAL injection vulnerabilities.
 
-Focus on:
-1. SQL injection (string concatenation in queries)
-2. Command injection (executing system commands with user input)
-3. Path traversal (file operations with user-provided paths)
-4. LDAP/NoSQL injection
-5. XSS (Cross-Site Scripting) if applicable
-6. Template injection
+ONLY report if you find code that:
+1. SQL Injection: Raw SQL strings built with user input via string concatenation/formatting AND executed directly
+2. Command Injection: User input passed to os.system(), subprocess.call(), exec(), or eval()
+3. Path Traversal: User-controlled paths in file operations without sanitization
 
-For EACH injection vulnerability found, respond with this EXACT format:
+DO NOT FLAG (these are safe patterns):
+- Supabase/Firebase client library calls (they use parameterized queries internally)
+- ORM queries (SQLAlchemy, Django ORM, Prisma) - they parameterize automatically
+- RPC function calls like `.rpc("function_name", params)` - these are parameterized
+- String formatting for search/filter text (not SQL execution)
+- f-strings used for logging, display text, or API calls (not database queries)
+- Vector store search queries (semantic search, not SQL)
+- Internal variable concatenation (not from user input)
+
+Be VERY conservative. If unsure whether user input reaches the vulnerable sink, DO NOT report.
+
+For EACH CONFIRMED vulnerability, respond with:
 Category: Injection Vulnerability
 Severity: [high/critical]
-Description: [explain the injection risk]
-Location: [line X or function name]
-Fix: [use parameterized queries, input validation, etc.]
-Confidence: [0.0-1.0]
+Description: [explain what user input reaches what dangerous function]
+Location: [line X]
+Fix: [specific fix]
+Confidence: [0.7-1.0 only if certain]
 
-Only report actual injection risks. If code is safe, respond with "No injection vulnerabilities found."
+If code is safe, respond with: "No injection vulnerabilities found."
 """
         }
         

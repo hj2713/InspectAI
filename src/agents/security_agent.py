@@ -28,12 +28,13 @@ class SecurityAnalysisAgent(BaseAgent):
             "dependencies": DependencyScanner(cfg)
         }
         
-        # Create filter pipeline with high confidence threshold for security
-        confidence_threshold = cfg.get("confidence_threshold", 0.65)
+        # Create filter pipeline with HIGH confidence threshold to reduce false positives
+        # Security findings should be high confidence only (0.7+)
+        confidence_threshold = cfg.get("confidence_threshold", 0.70)
         self.filter_pipeline = create_default_pipeline(
             confidence_threshold=confidence_threshold,
             similarity_threshold=85,
-            strict_evidence=False
+            strict_evidence=True  # Require evidence for security findings
         )
     
     def process(self, code: str, context: str = None, filename: str = None) -> Dict[str, Any]:
