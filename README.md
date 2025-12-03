@@ -1310,6 +1310,81 @@ pytest tests/ -v
 
 ---
 
+## ❓ FAQ
+
+### Q: Why use Render instead of GCP Cloud Run?
+
+**A:** GitHub webhooks require a **publicly accessible endpoint** to receive events. This creates a challenge with GCP Cloud Run:
+
+| Platform | Webhook Challenge | Solution |
+|----------|------------------|----------|
+| **GCP Cloud Run** | Requires `--allow-unauthenticated` flag (security risk) OR complex OIDC proxy setup | Need GitHub Actions workflow + Workload Identity Federation to proxy webhooks securely |
+| **Render** | ✅ Built-in public HTTPS endpoint | Just deploy and set webhook URL |
+
+**The GCP workaround requires:**
+1. Workload Identity Pool + Provider setup
+2. Service account with `roles/run.invoker`
+3. GitHub Actions workflow to intercept webhooks
+4. OIDC authentication for each request
+
+**Render is simpler because:**
+- ✅ Public endpoint works out of the box
+- ✅ GitHub webhook secret validation is sufficient security
+- ✅ No IAM/OIDC configuration needed
+- ✅ Free tier available
+- ✅ Auto-deploy from GitHub
+
+> **Note:** GCP deployment docs exist in `docs/GCP_DEPLOYMENT.md` if you need GCP-specific features or have existing GCP infrastructure.
+
+---
+
+### Q: How do users provide feedback on reviews?
+
+**A:** Two methods:
+
+1. **Emoji Reactions** (easiest):
+   - 👍 = Comment was helpful
+   - 👎 = Comment was not helpful/false positive
+
+2. **Reply Comments** (detailed):
+   - Reply to any InspectAI comment with explanation
+   - Example: *"This is intentional for backwards compatibility"*
+   - System auto-detects sentiment from keywords
+
+Feedback is used to improve future reviews via similarity matching.
+
+---
+
+### Q: Why does `/inspectai_security` show false positives?
+
+**A:** We've significantly improved the security scanners to reduce false positives. The scanners now:
+
+- ✅ Only report what they **SEE** in the code, not speculate
+- ✅ Exclude safe patterns (Supabase RPC, ORM queries, env vars)
+- ✅ Require 0.70+ confidence threshold
+- ✅ Don't flag file extension strings as parsing vulnerabilities
+
+If you still see false positives, react with 👎 - the feedback system learns!
+
+---
+
+### Q: What LLM providers are supported?
+
+**A:** Three providers with easy switching:
+
+| Provider | Model | Best For |
+|----------|-------|----------|
+| **Gemini** (default) | `gemini-2.0-flash` | Fast, good quality, free tier |
+| **OpenAI** | `gpt-4` | Highest quality |
+| **Bytez** | `granite-4.0-h-tiny` | Lightweight, fast |
+
+Change provider via environment variable:
+```bash
+LLM_PROVIDER=gemini  # or openai, bytez
+```
+
+---
+
 ## 🎯 Roadmap
 
 - [ ] **Web Dashboard**: Review history, metrics, agent performance
