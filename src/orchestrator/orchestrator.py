@@ -446,14 +446,14 @@ class OrchestratorAgent:
                     try:
                         # Search for relevant context for this PR/Repo
                         # For now, we just get general context. In future, we can be more specific.
-                        results = self.vector_store.search(
+                        context_results = self.vector_store.search(
                             query=f"Context for PR #{pr_number} in {repo_id}",
                             repo_id=repo_id,
                             n_results=3
                         )
-                        if results:
-                            context = "\n".join([r["content"] for r in results])
-                            logger.info(f"Retrieved {len(results)} context items from Vector Store")
+                        if context_results:
+                            context = "\n".join([r["content"] for r in context_results])
+                            logger.info(f"Retrieved {len(context_results)} context items from Vector Store")
                     except Exception as e:
                         logger.warning(f"Failed to retrieve context: {e}")
 
