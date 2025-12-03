@@ -706,6 +706,28 @@ class GitHubClient:
         
         return self.get_file_content(repo_url, file_path, branch=head_sha)
     
+    def get_pr_review_comment(
+        self,
+        repo_url: str,
+        comment_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Get a specific PR review comment by ID.
+        
+        Args:
+            repo_url: Repository URL or owner/repo format
+            comment_id: The ID of the comment to fetch
+            
+        Returns:
+            Comment data dict or None if not found
+        """
+        owner, repo = self._parse_repo_url(repo_url)
+        
+        try:
+            return self._api_get(f"repos/{owner}/{repo}/pulls/comments/{comment_id}")
+        except Exception as e:
+            logger.warning(f"Could not fetch comment {comment_id}: {e}")
+            return None
+    
     def post_pr_comment(
         self,
         repo_url: str,

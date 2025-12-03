@@ -811,13 +811,11 @@ Only the **changed lines** in this PR were reviewed.
             )
             logger.info(f"[REVIEW] Posted review with {len(merged_comments)} inline comments")
             
-            # Store comments in Supabase for feedback learning
+            # Store comments WITHOUT embeddings (lazy generation when feedback arrives)
+            # This saves computation - embeddings only generated for comments that get feedback
             review_id = result.get("id")
             for comment_data in filtered_comments:
                 try:
-                    # Get GitHub comment ID from the review
-                    # Note: GitHub doesn't return individual comment IDs in batch review
-                    # We'll sync them later when fetching reactions
                     await feedback_system.store_comment(
                         repo_full_name=repo_full_name,
                         pr_number=pr_number,
@@ -827,13 +825,13 @@ Only the **changed lines** in this PR were reviewed.
                         category=comment_data.get("category", "Code Review"),
                         severity=comment_data.get("severity", "medium"),
                         github_comment_id=None,  # Will be populated during reaction sync
-                        command_type="review"
+                        command_type="review",
+                        generate_embedding=False  # Lazy - generated when feedback arrives
                     )
                 except Exception as e:
                     logger.error(f"Error storing comment in feedback system: {e}")
-                    # Don't fail the whole review if storage fails
             
-            # Record filter stats
+            # Record filter stats (still useful for monitoring)
             await feedback_system.record_filter_stats(
                 repo_full_name=repo_full_name,
                 pr_number=pr_number,
@@ -1134,7 +1132,7 @@ I couldn't scan any files in this PR due to technical errors. This might be beca
                 comments=merged_comments[:50]  # GitHub limits to 50 comments per review
             )
             
-            # Store comments for future feedback learning
+            # Store comments WITHOUT embeddings (lazy generation when feedback arrives)
             for comment in merged_comments[:50]:
                 try:
                     await feedback_system.store_comment(
@@ -1145,7 +1143,8 @@ I couldn't scan any files in this PR due to technical errors. This might be beca
                         comment_body=comment.get("body", ""),
                         category="Bug Detection",
                         severity="medium",
-                        command_type="bugs"
+                        command_type="bugs",
+                        generate_embedding=False  # Lazy - generated when feedback arrives
                     )
                 except Exception as e:
                     logger.debug(f"[BUGS] Failed to store comment for feedback: {e}")
@@ -1324,7 +1323,7 @@ I couldn't analyze any files in this PR. This might be due to:
                 comments=merged_comments[:50]
             )
             
-            # Store comments for future feedback learning
+            # Store comments WITHOUT embeddings (lazy generation when feedback arrives)
             for comment in merged_comments[:50]:
                 try:
                     await feedback_system.store_comment(
@@ -1335,7 +1334,8 @@ I couldn't analyze any files in this PR. This might be due to:
                         comment_body=comment.get("body", ""),
                         category="Refactor",
                         severity="low",
-                        command_type="refactor"
+                        command_type="refactor",
+                        generate_embedding=False  # Lazy - generated when feedback arrives
                     )
                 except Exception as e:
                     logger.debug(f"[REFACTOR] Failed to store comment for feedback: {e}")
@@ -1523,7 +1523,7 @@ ONLY report vulnerabilities in the changed code (lines {sorted(diff_lines)}).
                 comments=merged_comments[:50]
             )
             
-            # Store for feedback learning
+            # Store comments WITHOUT embeddings (lazy generation when feedback arrives)
             for comment in merged_comments[:50]:
                 try:
                     await feedback_system.store_comment(
@@ -1534,7 +1534,8 @@ ONLY report vulnerabilities in the changed code (lines {sorted(diff_lines)}).
                         comment_body=comment.get("body", ""),
                         category="Security",
                         severity=comment.get("severity", "high"),
-                        command_type="security"
+                        command_type="security",
+                        generate_embedding=False  # Lazy - generated when feedback arrives
                     )
                 except Exception as e:
                     logger.debug(f"[SECURITY] Failed to store comment for feedback: {e}")
@@ -2205,6 +2206,12 @@ async def github_webhook(
             commenter = comment.get("user", {}).get("login", "")
             repo = payload.get("repository", {})
             repo_full_name = repo.get("full_name", "unknown/unknown")
+            pull_request = payload.get("pull_request", {})
+            pr_number = pull_request.get("number", 0)
+            
+            # Get file and line info from the comment
+            file_path = comment.get("path", "")
+            line_number = comment.get("line") or comment.get("original_line", 0)
             
             # Check if this is a reply to another comment (potential feedback)
             if in_reply_to_id:
@@ -2212,6 +2219,27 @@ async def github_webhook(
                     f"[FEEDBACK] Reply detected from {commenter} to comment {in_reply_to_id} "
                     f"in {repo_full_name}: '{comment_body[:50]}...'"
                 )
+                
+                # Try to fetch the original comment to get its body
+                # We need to use GitHub API to get the original comment
+                original_comment_body = None
+                try:
+                    # Initialize GitHub client for fetching original comment
+                    github_client = GitHubClient()
+                    original_comment = github_client.get_pr_review_comment(
+                        repo_full_name, in_reply_to_id
+                    )
+                    if original_comment:
+                        original_comment_body = original_comment.get("body", "")
+                        # Check if it's our bot's comment (contains InspectAI markers)
+                        if "inspectai" not in original_comment_body.lower() and "🔍" not in original_comment_body:
+                            # Not our comment, ignore
+                            return {
+                                "status": "ignored",
+                                "message": "Reply not to an InspectAI comment"
+                            }
+                except Exception as e:
+                    logger.warning(f"[FEEDBACK] Could not fetch original comment {in_reply_to_id}: {e}")
                 
                 # Try to store as written feedback
                 try:
@@ -2222,7 +2250,12 @@ async def github_webhook(
                         success = await feedback_system.store_written_feedback(
                             github_comment_id=in_reply_to_id,
                             user_login=commenter,
-                            explanation=comment_body
+                            explanation=comment_body,
+                            original_comment_body=original_comment_body,
+                            repo_full_name=repo_full_name,
+                            pr_number=pr_number,
+                            file_path=file_path,
+                            line_number=line_number
                         )
                         
                         if success:

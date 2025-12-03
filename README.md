@@ -11,8 +11,25 @@ Production-grade multi-agent system for automated code review, bug detection, an
 
 ---
 
+## 🏗️ Technical Choices Summary
+
+> Quick reference of key architectural decisions - see [FAQ](#-faq) for detailed explanations.
+
+| Category | Choice | Why |
+|----------|--------|-----|
+| **LLM Provider** | Gemini 2.0-flash (default) | ⚡ Fastest, 💰 cheapest, 1M token context |
+| **Embeddings** | sentence-transformers (local) | 🆓 Free, no API key, privacy-preserving |
+| **Vector DB** | Supabase pgvector | ☁️ Cloud-hosted, unified storage, SQL queries |
+| **Deployment** | Render | 🔗 Public webhook endpoint works out of box |
+| **Parallelism** | ThreadPoolExecutor | 🧵 Simple, works with sync LLM calls |
+| **Queue System** | None (synchronous) | 📦 Simpler for MVP, consider Hatchet for scale |
+| **Webhook Relay** | None (direct GitHub) | 📨 GitHub's native retry is sufficient for now |
+
+---
+
 ## 📑 Table of Contents
 
+- [Technical Choices Summary](#-technical-choices-summary)
 - [Features Overview](#-features-overview)
 - [Architecture](#-architecture)
 - [Commands & Usage](#-github-commands)
@@ -27,6 +44,7 @@ Production-grade multi-agent system for automated code review, bug detection, an
 - [Testing](#-testing)
 - [Project Structure](#-project-structure)
 - [Contributing](#-contributing)
+- [FAQ](#-faq)
 - [Roadmap](#-roadmap)
 
 ---
@@ -386,6 +404,43 @@ class StructuredContext:
 
 **Solution**: 4-stage filter pipeline.
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Filter Pipeline Architecture                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Raw LLM Findings (e.g., 25 findings)                                       │
+│         │                                                                   │
+│         ▼                                                                   │
+│  ┌────────────────────┐                                                     │
+│  │ 1️⃣ ConfidenceFilter │  Threshold: 0.5-0.65 (by agent type)              │
+│  │                    │  "Remove uncertain findings"                        │
+│  └─────────┬──────────┘                                                     │
+│            │ ~20 findings remain                                            │
+│            ▼                                                                │
+│  ┌────────────────────┐                                                     │
+│  │ 2️⃣ Deduplication   │  Similarity: 85% threshold                         │
+│  │    Filter          │  "Remove duplicate/similar findings"                │
+│  └─────────┬──────────┘                                                     │
+│            │ ~15 findings remain                                            │
+│            ▼                                                                │
+│  ┌────────────────────┐                                                     │
+│  │ 3️⃣ Hallucination   │  Evidence verification required                    │
+│  │    Filter          │  "Verify code snippets actually exist"              │
+│  └─────────┬──────────┘                                                     │
+│            │ ~12 findings remain                                            │
+│            ▼                                                                │
+│  ┌────────────────────┐                                                     │
+│  │ 4️⃣ FeedbackFilter  │  Historical reaction data                          │
+│  │    (Dynamic)       │  "Skip if similar was 👎, boost if 👍"             │
+│  └─────────┬──────────┘                                                     │
+│            │ ~10 high-quality findings                                      │
+│            ▼                                                                │
+│  Posted to GitHub as Review Comments                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ```python
 # Filter Pipeline Architecture
 class FilterPipeline:
@@ -645,6 +700,53 @@ Before posting NEW comments, we check if similar comments were disliked:
 filtered_comments = await feedback_system.filter_by_feedback(all_comments, repo_full_name)
 ```
 
+**Embedding Similarity Search:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     EMBEDDING SIMILARITY SEARCH                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ New Comment: "Variable 'user' may be None, add null check"
+        │
+        ▼
+ ┌──────────────────────────────────────────┐
+ │      sentence-transformers               │
+ │      (all-MiniLM-L6-v2)                  │
+ │                                          │
+ │  "Variable 'user' may be None..."        │
+ │         ↓                                │
+ │  [0.23, -0.15, 0.87, ..., 0.42]         │
+ │           384 dimensions                 │
+ └───────────────────┬──────────────────────┘
+                     │
+                     ▼
+ ┌──────────────────────────────────────────┐
+ │      Supabase pgvector                   │
+ │      (match_similar_comments RPC)        │
+ │                                          │
+ │  Cosine Similarity Search:               │
+ │                                          │
+ │  Past Comment 1:                         │
+ │  "Check if user is null before access"   │
+ │  Similarity: 0.91 ✅ > 0.85 threshold    │
+ │  Reactions: 👎👎👎 (3 thumbs down)        │
+ │                                          │
+ │  Past Comment 2:                         │
+ │  "user variable undefined error"         │
+ │  Similarity: 0.78 ❌ < 0.85 threshold    │
+ │                                          │
+ └───────────────────┬──────────────────────┘
+                     │
+                     ▼
+ ┌──────────────────────────────────────────┐
+ │      Decision: FILTER OUT                │
+ │                                          │
+ │  Similar comment had 3 👎 > 0 👍         │
+ │  This comment will NOT be posted         │
+ └──────────────────────────────────────────┘
+```
+
 **The Algorithm:**
 ```
 For each new comment:
@@ -669,6 +771,30 @@ For each new comment:
 ### Repository Isolation
 
 **Each repository's feedback is kept separate:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    REPOSITORY ISOLATION MODEL                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+     repo: owner/repo-A                    repo: owner/repo-B
+    ┌─────────────────────┐               ┌─────────────────────┐
+    │ review_comments     │               │ review_comments     │
+    │ ─────────────────── │               │ ─────────────────── │
+    │ "null check..."  👎 │               │ "null check..."  👍 │
+    │ "SQL injection" 👍👍 │               │ "SQL injection" 👎 │
+    │ "unused var..."  👎 │               │ "type hint..."  👍👍 │
+    └─────────────────────┘               └─────────────────────┘
+            │                                     │
+            │  Query for repo-A                   │  Query for repo-B
+            │  filters by repo-A                  │  filters by repo-B
+            ▼                                     ▼
+    ┌─────────────────────┐               ┌─────────────────────┐
+    │ Result:             │               │ Result:             │
+    │ Skip "null check"   │               │ Post "null check"   │
+    │ Post "SQL injection"│               │ Skip "SQL injection"│
+    └─────────────────────┘               └─────────────────────┘
+```
 
 ```sql
 -- All queries filter by repo_full_name
@@ -764,7 +890,117 @@ async def filter_by_feedback(self, comments: List[Dict], repo_full_name: str):
 
 ## 🔬 Technical Deep Dive
 
+### Complete Request Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    COMPLETE REQUEST LIFECYCLE                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ GitHub                    InspectAI Server                       External
+┌──────┐                   ┌─────────────────┐                   ┌──────────┐
+│ User │                   │   Render Host   │                   │ Services │
+│ PR   │                   │  (Port 8080)    │                   │          │
+└──┬───┘                   └────────┬────────┘                   └────┬─────┘
+   │                                │                                 │
+   │ 1. POST /webhook/github        │                                 │
+   │    X-Hub-Signature-256         │                                 │
+   │────────────────────────────────▶                                 │
+   │                                │                                 │
+   │                         2. Verify HMAC                           │
+   │                            signature                             │
+   │                                │                                 │
+   │                         3. Parse event                           │
+   │                            type & body                           │
+   │                                │                                 │
+   │                         4. Check for                             │
+   │                            /inspectai_*                          │
+   │                            command                               │
+   │                                │                                 │
+   │                                │──────────────────────────────────▶
+   │                                │  5. Fetch PR diff (GitHub API)  │
+   │                                │◀─────────────────────────────────│
+   │                                │                                 │
+   │                         6. ThreadPoolExecutor                    │
+   │                            (5 workers)                           │
+   │                                │                                 │
+   │                    ┌───────────┼───────────┐                     │
+   │                    │           │           │                     │
+   │                    ▼           ▼           ▼                     │
+   │               ┌────────┐ ┌────────┐ ┌────────┐                   │
+   │               │ File 1 │ │ File 2 │ │ File 3 │                   │
+   │               └───┬────┘ └───┬────┘ └───┬────┘                   │
+   │                   │          │          │                        │
+   │                   │──────────┼──────────│────────────────────────▶
+   │                   │     7. LLM API calls (Gemini)                │
+   │                   │◀─────────┼──────────│─────────────────────────│
+   │                   │          │          │                        │
+   │               ┌───▼────┐ ┌───▼────┐ ┌───▼────┐                   │
+   │               │Findings│ │Findings│ │Findings│                   │
+   │               └───┬────┘ └───┬────┘ └───┬────┘                   │
+   │                   │          │          │                        │
+   │                    └─────────┼─────────┘                         │
+   │                              │                                   │
+   │                       8. Merge all                               │
+   │                          findings                                │
+   │                              │                                   │
+   │                       9. Filter Pipeline                         │
+   │                          ├─ Confidence                           │
+   │                          ├─ Deduplication                        │
+   │                          ├─ Hallucination                        │
+   │                          └─ Feedback                             │
+   │                              │                                   │
+   │                              │───────────────────────────────────▶
+   │                              │  10. Query similar feedback       │
+   │                              │      (Supabase pgvector)          │
+   │                              │◀──────────────────────────────────│
+   │                              │                                   │
+   │                       11. Final filtered                         │
+   │                           findings                               │
+   │                              │                                   │
+   │◀─────────────────────────────│                                   │
+   │ 12. POST review comments     │                                   │
+   │     (GitHub API)             │                                   │
+   │                              │                                   │
+   │                              │───────────────────────────────────▶
+   │                              │  13. Store comments for           │
+   │                              │      feedback learning            │
+   │                              │      (Supabase)                   │
+   │                              │                                   │
+└──┴──────────────────────────────┴───────────────────────────────────┘
+
+Timeline: ~8-15 seconds for 5 files
+```
+
 ### LLM Client Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         LLM Client Architecture                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                        ┌─────────────────────┐                              │
+│                        │     LLMClient       │                              │
+│                        │   (Unified API)     │                              │
+│                        └──────────┬──────────┘                              │
+│                                   │                                         │
+│              ┌────────────────────┼────────────────────┐                    │
+│              │                    │                    │                    │
+│              ▼                    ▼                    ▼                    │
+│   ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐           │
+│   │   Gemini API     │ │   OpenAI API     │ │   Bytez API      │           │
+│   │  (HTTP Direct)   │ │  (SDK Client)    │ │  (SDK Client)    │           │
+│   │                  │ │                  │ │                  │           │
+│   │ gemini-2.0-flash │ │ gpt-4            │ │ granite-4.0      │           │
+│   │ ⚡ Fastest       │ │ 🎯 Highest qual  │ │ 💡 Lightweight   │           │
+│   │ 💰 Cheapest      │ │ 💰💰💰 Expensive │ │ 💰 Budget        │           │
+│   │ 1M ctx tokens    │ │ 128K ctx tokens  │ │ 32K ctx tokens   │           │
+│   └──────────────────┘ └──────────────────┘ └──────────────────┘           │
+│                                                                             │
+│   Selection: LLM_PROVIDER env var → "gemini" | "openai" | "bytez"          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 Unified interface supporting 3 providers:
 
@@ -1507,6 +1743,20 @@ LLM_PROVIDER=gemini  # or openai, bytez
 | **Current (sync)** | Low volume, single PR at a time, simpler deployment |
 | **Queue-based (Hatchet, Celery, BullMQ)** | High volume, many concurrent PRs, need retry/persistence |
 
+**Why we chose synchronous processing:**
+
+1. **Scale is low** - This is a class project / MVP, not handling thousands of PRs/day
+2. **Simplicity over complexity** - Adding Hatchet/Redis requires:
+   - Additional infrastructure (Redis, worker processes)
+   - More configuration and deployment complexity
+   - Extra costs and monitoring
+3. **Can be added later** - Architecture supports easy migration if needed
+
+**This applies to feedback storage too:**
+- User reactions (👍/👎) are stored synchronously in Supabase
+- For current scale (~50-100ms per write), this is acceptable
+- No message queue between webhook and database
+
 **Current limitations:**
 - If multiple PRs trigger reviews simultaneously, they process sequentially
 - Long-running reviews could timeout
@@ -1526,6 +1776,200 @@ GitHub Webhook → Queue (Hatchet/Redis) → Worker Processes → GitHub API
 ```
 
 This would allow horizontal scaling and prevent lost requests during high load.
+
+---
+
+### Q: Why Supabase over ChromaDB for vector storage?
+
+**A:** We migrated from ChromaDB to Supabase pgvector for several reasons:
+
+| Feature | ChromaDB | Supabase (pgvector) |
+|---------|----------|---------------------|
+| **Persistence** | File-based (local) | ✅ Cloud PostgreSQL |
+| **Scaling** | Single node | ✅ Managed scaling |
+| **Multi-tenancy** | Complex setup | ✅ Row-level security |
+| **Additional features** | Just vectors | ✅ Full SQL, auth, realtime |
+| **Cost** | Free (local) | Free tier available |
+
+**Key reasons for switch:**
+1. **Persistence**: ChromaDB stores locally, lost on container restart
+2. **Unified storage**: Feedback, indexing, vectors all in one database
+3. **SQL queries**: Can JOIN vectors with feedback for complex filtering
+4. **Production-ready**: Supabase handles backups, scaling, monitoring
+
+**Migration was straightforward:**
+```python
+# Old: ChromaDB
+collection = chroma_client.get_collection("embeddings")
+results = collection.query(query_embeddings=[embedding])
+
+# New: Supabase pgvector
+results = supabase.rpc("match_similar_comments", {
+    "query_embedding": embedding,
+    "match_threshold": 0.85
+}).execute()
+```
+
+---
+
+### Q: Why sentence-transformers over OpenAI embeddings?
+
+**A:** We switched from OpenAI's `text-embedding-ada-002` to local sentence-transformers:
+
+| Aspect | OpenAI ada-002 | sentence-transformers |
+|--------|----------------|----------------------|
+| **Cost** | $0.0001/1K tokens | ✅ **FREE** |
+| **Speed** | Network latency | ✅ Local, instant |
+| **Privacy** | Data sent to OpenAI | ✅ Data stays local |
+| **Quality** | 1536 dimensions | 384 dimensions (sufficient) |
+| **Dependency** | API key required | ✅ No API key |
+
+**Model used**: `all-MiniLM-L6-v2`
+- 22M parameters, 80MB model
+- Optimized for semantic similarity
+- Works great for code comment matching
+
+```python
+# Implementation
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+embedding = model.encode(text).tolist()  # 384-dim vector
+```
+
+---
+
+### Q: Why ThreadPoolExecutor instead of asyncio for parallel processing?
+
+**A:** We use `ThreadPoolExecutor` for file-level parallelism:
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **ThreadPoolExecutor (chosen)** | ✅ Simple, works with sync LLM calls<br>✅ Predictable resource usage<br>✅ Easy to limit concurrency | ⚠️ GIL limits true parallelism |
+| **asyncio** | ✅ True async, better for I/O<br>✅ More scalable | ⚠️ Requires async everywhere<br>⚠️ Complex error handling |
+| **multiprocessing** | ✅ True parallelism (no GIL) | ⚠️ Memory overhead<br>⚠️ Complex IPC |
+
+**Why ThreadPoolExecutor works:**
+- LLM API calls are **I/O bound** (network waiting), not CPU bound
+- GIL is released during I/O operations
+- Simpler code than full async rewrite
+- 5 workers = 5 concurrent API calls
+
+```python
+# Current implementation
+with ThreadPoolExecutor(max_workers=5) as executor:
+    futures = {executor.submit(process_file, f): f for f in files}
+    for future in as_completed(futures):
+        results.extend(future.result())
+```
+
+---
+
+### Q: Why are confidence thresholds different per agent?
+
+**A:** Each agent type has different false positive rates:
+
+| Agent | Threshold | Reasoning |
+|-------|-----------|-----------|
+| **Code Review** | 0.50 | General review, some false positives OK |
+| **Bug Detection** | 0.60 | Bugs should be more certain |
+| **Security** | 0.65-0.70 | Security alerts must be high confidence |
+| **Refactoring** | 0.40 | Suggestions can be more speculative |
+
+**Security is highest because:**
+- False positive security alerts cause alarm fatigue
+- Developers may ignore real issues if too many false ones
+- Better to miss edge cases than flood with noise
+
+```python
+ORCHESTRATOR_CONFIG = {
+    "analysis": {"confidence_threshold": 0.5},
+    "bug_detection": {"confidence_threshold": 0.6},
+    "security": {"confidence_threshold": 0.65},
+}
+```
+
+---
+
+### Q: Why diff-aware analysis instead of full-file analysis?
+
+**A:** Focusing on changed lines provides better signal-to-noise:
+
+| Approach | Result |
+|----------|--------|
+| **Full file analysis** | ❌ Comments on old code<br>❌ Overwhelms developer<br>❌ Irrelevant to PR |
+| **Diff-aware (chosen)** | ✅ Only changed lines<br>✅ Relevant to PR<br>✅ Actionable feedback |
+
+**How it works:**
+```
+PR Diff:
+  Line 10: unchanged context
+  Line 11: - old code (removed)
+  Line 12: + new code (added)    ← Only comment here
+  Line 13: unchanged context
+```
+
+**Exception**: Bug detection scans entire file because bugs may exist in code that calls the changed function.
+
+---
+
+### Q: Why 4 specialized security sub-agents?
+
+**A:** A single "find all security issues" prompt produces poor results. Specialized agents are more accurate:
+
+```
+                    ┌─────────────────────┐
+                    │   SecurityAgent     │
+                    │   (Orchestrator)    │
+                    └──────────┬──────────┘
+                               │
+       ┌───────────┬───────────┼───────────┬───────────┐
+       │           │           │           │           │
+       ▼           ▼           ▼           ▼           │
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│Injection │ │   Auth   │ │  Data    │ │Dependency│   │
+│ Scanner  │ │ Scanner  │ │ Exposure │ │ Scanner  │   │
+│          │ │          │ │ Scanner  │ │          │   │
+│SQL, XSS, │ │Session,  │ │Logging,  │ │Outdated, │   │
+│Command   │ │JWT, RBAC │ │Secrets,  │ │CVEs,     │   │
+│Injection │ │          │ │PII       │ │Known vuln│   │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘   │
+       │           │           │           │          │
+       └───────────┴───────────┴───────────┴──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │  Merge & Dedupe     │
+                    │  (Confidence 0.70+) │
+                    └─────────────────────┘
+```
+
+**Benefits:**
+- Each agent has specialized prompts
+- Parallel execution (4x faster than sequential)
+- Different confidence thresholds per category
+- Easier to tune false positive rates independently
+
+---
+
+### Q: How does the feedback system prevent infinite loops?
+
+**A:** We have several safeguards:
+
+1. **Minimum feedback threshold**: Need ≥2 thumbs down to filter
+2. **Repo isolation**: Feedback only applies within same repository
+3. **Time decay** (planned): Old feedback weighted less
+4. **Confidence cap**: Boosted confidence maxes at 1.0
+
+```python
+# Filter logic prevents aggressive filtering
+if total_negative > total_positive and total_negative >= 2:
+    # Only filter if SIGNIFICANTLY more negative feedback
+    return None  # Skip this comment
+
+# Boost is capped
+comment["confidence"] = min(comment["confidence"] * 1.2, 1.0)
+```
 
 ---
 

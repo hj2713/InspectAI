@@ -122,9 +122,17 @@ class FeedbackSystem:
         category: str,
         severity: str,
         github_comment_id: Optional[int] = None,
-        command_type: str = "review"
+        command_type: str = "review",
+        generate_embedding: bool = False
     ) -> Optional[str]:
         """Store a review comment in Supabase.
+        
+        By default, comments are stored WITHOUT embeddings to save computation.
+        Embeddings are generated lazily when:
+        1. User gives feedback (reaction/reply) - then we update with embedding
+        2. Explicitly requested via generate_embedding=True
+        
+        This saves embedding computation for comments that never receive feedback.
         
         Args:
             repo_full_name: Repository name (owner/repo)
@@ -134,8 +142,9 @@ class FeedbackSystem:
             comment_body: Comment text
             category: Category of issue (e.g., "Logic Error")
             severity: Severity level (critical/high/medium/low)
-            github_comment_id: GitHub comment ID
+            github_comment_id: GitHub comment ID (required for feedback linking)
             command_type: Command that generated comment (review/bugs/refactor)
+            generate_embedding: Whether to generate embedding immediately (default: False)
             
         Returns:
             Comment UUID or None on error
@@ -144,8 +153,11 @@ class FeedbackSystem:
             return None
         
         try:
-            # Generate embedding
-            embedding = self.get_embedding(comment_body)
+            # Only generate embedding if explicitly requested
+            # This saves computation for comments that may never receive feedback
+            embedding = None
+            if generate_embedding:
+                embedding = self.get_embedding(comment_body)
             
             # Insert into database
             result = self.client.table("review_comments").insert({
@@ -156,18 +168,61 @@ class FeedbackSystem:
                 "comment_body": comment_body,
                 "category": category,
                 "severity": severity,
-                "embedding": embedding,
+                "embedding": embedding,  # May be None - generated lazily when feedback arrives
                 "github_comment_id": github_comment_id,
                 "command_type": command_type
             }).execute()
             
             comment_id = result.data[0]["id"] if result.data else None
-            logger.info(f"Stored comment {comment_id} for {repo_full_name}#{pr_number}")
+            logger.info(f"Stored comment {comment_id} for {repo_full_name}#{pr_number} (embedding: {embedding is not None})")
             return comment_id
             
         except Exception as e:
             logger.error(f"Error storing comment: {e}")
             return None
+    
+    async def _ensure_embedding(self, comment_id: str, comment_body: str) -> bool:
+        """Generate and store embedding for a comment if not already present.
+        
+        Called when feedback is received to ensure we can do similarity search.
+        
+        Args:
+            comment_id: UUID of the comment
+            comment_body: Text of the comment
+            
+        Returns:
+            True if embedding exists or was generated successfully
+        """
+        if not self.enabled:
+            return False
+        
+        try:
+            # Check if embedding already exists
+            result = self.client.table("review_comments")\
+                .select("embedding")\
+                .eq("id", comment_id)\
+                .execute()
+            
+            if result.data and result.data[0].get("embedding"):
+                return True  # Already has embedding
+            
+            # Generate embedding
+            embedding = self.get_embedding(comment_body)
+            if not embedding:
+                return False
+            
+            # Update the comment with embedding
+            self.client.table("review_comments")\
+                .update({"embedding": embedding})\
+                .eq("id", comment_id)\
+                .execute()
+            
+            logger.info(f"Generated embedding for comment {comment_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error ensuring embedding for comment {comment_id}: {e}")
+            return False
     
     async def sync_github_reactions(
         self,
@@ -176,6 +231,9 @@ class FeedbackSystem:
         days_back: int = 7
     ) -> int:
         """Sync reactions from GitHub for recent comments.
+        
+        When reactions are found, this also ensures embeddings are generated
+        for the comments (lazy embedding generation).
         
         Args:
             github_client: GitHub API client
@@ -192,7 +250,7 @@ class FeedbackSystem:
             # Get recent comments from our database
             cutoff_date = (datetime.now() - timedelta(days=days_back)).isoformat()
             result = self.client.table("review_comments")\
-                .select("id, github_comment_id")\
+                .select("id, github_comment_id, comment_body, embedding")\
                 .eq("repo_full_name", repo_full_name)\
                 .gte("posted_at", cutoff_date)\
                 .not_.is_("github_comment_id", "null")\
@@ -209,6 +267,14 @@ class FeedbackSystem:
                     reactions = github_client.get_comment_reactions(
                         comment["github_comment_id"]
                     )
+                    
+                    if reactions:
+                        # Generate embedding if not already present (lazy generation)
+                        if not comment.get("embedding"):
+                            await self._ensure_embedding(
+                                comment["id"], 
+                                comment["comment_body"]
+                            )
                     
                     # Store each reaction
                     for reaction in reactions:
@@ -344,7 +410,12 @@ class FeedbackSystem:
         github_comment_id: int,
         user_login: str,
         explanation: str,
-        reaction_type: Optional[str] = None
+        reaction_type: Optional[str] = None,
+        original_comment_body: Optional[str] = None,
+        repo_full_name: Optional[str] = None,
+        pr_number: Optional[int] = None,
+        file_path: Optional[str] = None,
+        line_number: Optional[int] = None
     ) -> bool:
         """Store written feedback from a user reply to an InspectAI comment.
         
@@ -352,11 +423,19 @@ class FeedbackSystem:
         - "This isn't a real bug, it's intentional behavior"
         - "Good catch! Fixed in next commit"
         
+        If the original comment doesn't exist in DB yet (because we now only
+        store comments when feedback is received), this will store it first.
+        
         Args:
             github_comment_id: The original InspectAI comment ID being replied to
             user_login: GitHub username of the person providing feedback
             explanation: The text of their reply/feedback
             reaction_type: Optional reaction type if they also reacted
+            original_comment_body: Text of the original comment (for storage if needed)
+            repo_full_name: Repository name (for storage if needed)
+            pr_number: PR number (for storage if needed)
+            file_path: File path (for storage if needed)
+            line_number: Line number (for storage if needed)
             
         Returns:
             True if stored successfully, False otherwise
@@ -368,15 +447,54 @@ class FeedbackSystem:
         try:
             # Find the comment in our database by github_comment_id
             comment_result = self.client.table("review_comments")\
-                .select("id")\
+                .select("id, comment_body, embedding")\
                 .eq("github_comment_id", github_comment_id)\
                 .execute()
             
-            if not comment_result.data:
-                logger.warning(f"Comment {github_comment_id} not found in database")
-                return False
+            comment_id = None
             
-            comment_id = comment_result.data[0]["id"]
+            if not comment_result.data:
+                # Comment not in DB yet - store it now if we have the original content
+                if original_comment_body and repo_full_name:
+                    logger.info(f"Comment {github_comment_id} not in DB, storing now with feedback")
+                    
+                    # Generate embedding for the original comment (needed for similarity search)
+                    embedding = self.get_embedding(original_comment_body)
+                    
+                    # Insert the original comment
+                    insert_result = self.client.table("review_comments").insert({
+                        "repo_full_name": repo_full_name,
+                        "pr_number": pr_number or 0,
+                        "file_path": file_path or "",
+                        "line_number": line_number or 0,
+                        "comment_body": original_comment_body,
+                        "category": "Unknown",  # We don't know the category
+                        "severity": "medium",
+                        "embedding": embedding,
+                        "github_comment_id": github_comment_id,
+                        "command_type": "unknown"
+                    }).execute()
+                    
+                    if insert_result.data:
+                        comment_id = insert_result.data[0]["id"]
+                        logger.info(f"Stored comment {github_comment_id} as {comment_id}")
+                    else:
+                        logger.error(f"Failed to store comment {github_comment_id}")
+                        return False
+                else:
+                    logger.warning(
+                        f"Comment {github_comment_id} not found in database and "
+                        f"original_comment_body not provided - cannot store feedback"
+                    )
+                    return False
+            else:
+                comment_id = comment_result.data[0]["id"]
+                comment_body = comment_result.data[0].get("comment_body", "")
+                
+                # Generate embedding if not already present (lazy generation)
+                if not comment_result.data[0].get("embedding") and comment_body:
+                    logger.info(f"Generating embedding for comment {comment_id} (feedback received)")
+                    await self._ensure_embedding(comment_id, comment_body)
             
             # Infer sentiment from explanation if no reaction provided
             if not reaction_type:
