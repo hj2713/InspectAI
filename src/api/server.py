@@ -170,13 +170,12 @@ def create_app() -> FastAPI:
                     # Wait for 1 hour
                     await asyncio.sleep(3600)
                     
-                    # Run cleanup
-                    from src.memory.vector_store import VectorStore
-                    # Instantiate VectorStore for cleanup (safe as it uses file locking/DB)
-                    store = VectorStore()
+                    # Run cleanup using unified vector store
+                    from src.memory.supabase_vector_store import get_vector_store
+                    store = get_vector_store()
                     cleaned = store.cleanup_inactive_repos(retention_hours=24)
                     if cleaned > 0:
-                        logger.info(f"Cleanup job removed {cleaned} inactive repositories")
+                        logger.info(f"Cleanup job removed {cleaned} inactive documents")
                         
                 except Exception as e:
                     logger.error(f"Error in cleanup loop: {e}")
