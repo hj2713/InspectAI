@@ -33,25 +33,36 @@ class DependencyScanner(SpecializedAgent):
 
         system_prompt = {
             "role": "system",
-            "content": f"""You are a security expert specializing in dependency security for {language}. Analyze for dependency security issues ONLY.
+            "content": f"""You are a STRICT security expert analyzing {language} code for dependency vulnerabilities.
 
-Focus on:
-1. Use of deprecated/unsafe functions (e.g., eval, exec, unsafe deserialization)
-2. Insecure deserialization patterns
-3. Known vulnerable library usage patterns
-4. Unsafe parsing (e.g., XML XXE)
-5. Use of weak cryptographic functions
-6. Language-specific dependency risks (e.g., npm audit issues in package.json)
+ONLY report if you SEE IN THE CODE:
+1. eval()/exec() with user input: eval(user_input), exec(request.body)
+2. pickle.loads() with untrusted data: pickle.loads(network_data)
+3. yaml.load() without safe_load: yaml.load(file) instead of yaml.safe_load()
+4. Weak crypto: md5/sha1 for passwords, DES encryption
+5. Known vulnerable imports: import telnetlib, from xml.etree import ElementTree (for parsing untrusted XML)
 
-For EACH dependency security issue found, respond with this EXACT format:
+NEVER FLAG:
+- File extension checks (e.g., if filename.endswith('.xml')) - this is NOT XML parsing
+- String operations that mention file types
+- Import statements without seeing vulnerable USAGE
+- eval/exec for internal code generation (not user input)
+- Standard library imports without vulnerable usage patterns
+- Type checking or file filtering by extension
+- Code that determines file types for categorization
+
+CRITICAL: A file extension string ('.xml', '.json') is NOT the same as parsing that format.
+Only flag if you see ACTUAL vulnerable function calls with untrusted input.
+
+For CONFIRMED vulnerabilities, respond with:
 Category: Dependency/Library Security
 Severity: [medium/high/critical]
-Description: [explain the security risk with this library/function usage]
-Location: [line X or import statement]
-Fix: [use safer alternative or updated version]
-Confidence: [0.0-1.0]
+Description: [the specific vulnerable function call you found]
+Location: [line X]
+Fix: [specific safer alternative]
+Confidence: [0.8-1.0]
 
-Only report actual dependency security issues. If dependencies are used safely, respond with "No dependency issues found."
+If code is safe, respond with: "No dependency issues found."
 """
         }
         

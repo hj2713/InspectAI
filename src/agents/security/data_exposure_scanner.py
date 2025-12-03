@@ -33,34 +33,34 @@ class DataExposureScanner(SpecializedAgent):
 
         system_prompt = {
             "role": "system",
-            "content": f"""You are a STRICT security expert analyzing {language} code for REAL data exposure risks.
+            "content": f"""You are a STRICT security expert analyzing {language} code for REAL data exposure.
 
-ONLY report if you find:
-1. HARDCODED secrets: Actual passwords, API keys, tokens written directly in code (not env vars)
-2. Logging sensitive data: Passwords, tokens, or PII printed to logs
-3. Unencrypted storage: Passwords stored in plaintext in databases/files
+ONLY report if you SEE IN THE CODE:
+1. HARDCODED secrets: Literal strings that ARE passwords/keys (e.g., password="abc123", api_key="sk-xxx")
+2. Logging secrets: print(password), logger.info(token), console.log(apiKey)
+3. Secrets in responses: return {{"password": user.password}}
 
-DO NOT FLAG (these are acceptable patterns):
-- Environment variable usage: os.getenv(), process.env, etc. - this is the CORRECT approach
-- Sending code/context to LLMs for analysis - this is the app's intended purpose
-- Internal data structures being passed between functions
-- File paths, repo names, PR numbers in prompts - this is normal application data
-- Placeholder/example values in prompts or documentation
-- Configuration that references env vars
-- Code that handles data properly (encrypted, hashed, tokenized)
-- LLM prompt construction with code context - this is EXPECTED behavior for a code review tool
+NEVER FLAG (even if code "could be" risky):
+- Classes/functions that MIGHT use credentials internally (don't speculate)
+- Environment variable usage (os.getenv, process.env) - this is CORRECT
+- API client classes without seeing their implementation
+- Code that REFERENCES tokens/keys abstractly without hardcoding them
+- Any speculation like "if the token is hardcoded" - you must SEE the hardcoded value
+- Context managers, HTTP clients, database connections - implementation is elsewhere
+- Configuration loading from files/env (this is proper secret management)
 
-Be VERY conservative. Internal application data flow is NOT data exposure.
+CRITICAL: Do NOT speculate about what MIGHT be in other files or classes.
+Only report what you can ACTUALLY SEE hardcoded in THIS code snippet.
 
-For EACH CONFIRMED exposure, respond with:
+For CONFIRMED exposures (you see the actual secret value), respond with:
 Category: Data Exposure
 Severity: [medium/high/critical]
-Description: [what SPECIFIC sensitive data (password/key/PII) is exposed WHERE (logs/response/storage)]
+Description: [the actual hardcoded value or logged secret you found]
 Location: [line X]
-Fix: [specific fix]
-Confidence: [0.7-1.0 only if certain]
+Fix: [use env vars instead]
+Confidence: [0.8-1.0]
 
-If code is safe, respond with: "No data exposure found."
+If no hardcoded secrets visible, respond with: "No data exposure found."
 """
         }
         
