@@ -52,6 +52,9 @@ Production-grade multi-agent system for automated code review, bug detection, an
 
 ## 🌟 Features Overview
 
+<details>
+<summary><b>Click to expand Features Overview</b></summary>
+
 ### Core Capabilities
 
 | Feature | Description |
@@ -144,9 +147,14 @@ We've curated detailed bug patterns targeting **real mistakes junior developers 
 
 </details>
 
+</details>
+
 ---
 
 ## 🏗️ Architecture
+
+<details>
+<summary><b>Click to expand Architecture diagrams and Agent hierarchy</b></summary>
 
 ### System Overview
 
@@ -260,9 +268,14 @@ OrchestratorAgent (Coordinates all agents with ThreadPoolExecutor)
     └── Generates/updates documentation
 ```
 
+</details>
+
 ---
 
 ## 🚀 GitHub Commands
+
+<details>
+<summary><b>Click to expand Commands reference and flow diagram</b></summary>
 
 Comment these on any Pull Request to trigger InspectAI:
 
@@ -342,9 +355,14 @@ Comment these on any Pull Request to trigger InspectAI:
 | 10 files | 80s | 16s | **5x faster** |
 | 50 files | 400s | 80s | **5x faster** |
 
+</details>
+
 ---
 
 ## ⚡ Key Innovations & Optimizations
+
+<details>
+<summary><b>Click to expand Key Innovations (5 major optimizations)</b></summary>
 
 ### 1. Parallel File Processing
 
@@ -561,9 +579,14 @@ reviewing production code. Your review style:
 """
 ```
 
+</details>
+
 ---
 
 ## 🗂️ Codebase Indexing (Intelligent Context)
+
+<details>
+<summary><b>Click to expand Codebase Indexing details</b></summary>
 
 ### What It Does
 
@@ -672,9 +695,14 @@ When indexing is enabled, reviews include:
 Breaking changes could affect multiple parts of the codebase.
 ```
 
+</details>
+
 ---
 
 ## 🎓 Feedback Learning System
+
+<details>
+<summary><b>Click to expand Feedback Learning System</b></summary>
 
 ### Architecture Overview
 
@@ -935,9 +963,14 @@ async def filter_by_feedback(self, comments: List[Dict], repo_full_name: str):
             comment["confidence"] = min(comment["confidence"] * 1.2, 1.0)
 ```
 
+</details>
+
 ---
 
 ## 🔬 Technical Deep Dive
+
+<details>
+<summary><b>Click to expand Technical Deep Dive</b></summary>
 
 ### Complete Request Lifecycle
 
@@ -1127,9 +1160,14 @@ ORCHESTRATOR_CONFIG = {
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+</details>
+
 ---
 
 ## 🚧 Issues We Faced & Solutions
+
+<details>
+<summary><b>Click to expand Issues Faced & Solutions (8 major issues)</b></summary>
 
 ### Issue 1: LLM Response Parsing Failures
 
@@ -1357,9 +1395,14 @@ def call_llm(prompt: str) -> str:
         raise
 ```
 
+</details>
+
 ---
 
 ## ⚙️ Setup & Installation
+
+<details>
+<summary><b>Click to expand Setup & Installation</b></summary>
 
 ### Prerequisites
 
@@ -1430,9 +1473,14 @@ ngrok http 8000
 # https://xxxx.ngrok.io/webhook/github
 ```
 
+</details>
+
 ---
 
 ## 🔧 Configuration
+
+<details>
+<summary><b>Click to expand Configuration</b></summary>
 
 ### Provider Configuration
 
@@ -1485,9 +1533,14 @@ GITHUB_CONFIG = {
 }
 ```
 
+</details>
+
 ---
 
 ## 🌐 Deployment
+
+<details>
+<summary><b>Click to expand Deployment</b></summary>
 
 ### Production (Render)
 
@@ -1529,9 +1582,14 @@ docker run -p 8080:8080 \
 
 See: [docs/GCP_DEPLOYMENT.md](docs/GCP_DEPLOYMENT.md)
 
+</details>
+
 ---
 
 ## 🧪 Testing
+
+<details>
+<summary><b>Click to expand Testing</b></summary>
 
 ### Run Tests
 
@@ -1557,6 +1615,8 @@ pytest --cov=src tests/
 2. Comment `/inspectai_review`
 3. Verify inline comments on correct lines
 4. React with 👍/👎 to test feedback learning
+
+</details>
 
 ---
 
@@ -1758,6 +1818,9 @@ def process_data(items=[], cache={}):  # Mutable defaults
 
 ## 📁 Project Structure
 
+<details>
+<summary><b>Click to expand Project Structure</b></summary>
+
 ```
 InspectAI/                          # ~40,000+ lines of Python
 ├── src/
@@ -1832,9 +1895,14 @@ InspectAI/                          # ~40,000+ lines of Python
 └── README.md                       # This file
 ```
 
+</details>
+
 ---
 
 ## 🤝 Contributing
+
+<details>
+<summary><b>Click to expand Contributing</b></summary>
 
 ### Development Setup
 
@@ -1862,9 +1930,14 @@ pytest tests/ -v
 4. **Performance**: Caching, incremental analysis
 5. **Documentation**: Tutorials, API docs
 
+</details>
+
 ---
 
 ## ❓ FAQ
+
+<details>
+<summary><b>Click to expand FAQ (Frequently Asked Questions)</b></summary>
 
 ### Q: Why use Render instead of GCP Cloud Run?
 
@@ -2249,9 +2322,14 @@ if total_negative > total_positive and total_negative >= 2:
 comment["confidence"] = min(comment["confidence"] * 1.2, 1.0)
 ```
 
+</details>
+
 ---
 
 ## 🎯 Roadmap
+
+<details>
+<summary><b>Click to expand Roadmap</b></summary>
 
 - [ ] **Web Dashboard**: Review history, metrics, agent performance
 - [ ] **Custom Rules**: Project-specific review rules via `.inspectai.yml`
@@ -2261,6 +2339,8 @@ comment["confidence"] = min(comment["confidence"] * 1.2, 1.0)
 - [ ] **Team Analytics**: Code quality trends over time
 - [ ] **Slack Integration**: Review notifications
 - [ ] **More Languages**: Ruby, PHP, Kotlin, Swift
+
+</details>
 
 ---
 
