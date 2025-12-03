@@ -28,38 +28,39 @@ class DataExposureScanner(SpecializedAgent):
         Returns:
             List of Finding objects related to data exposure
         """
-        language = "code"
-        if filename:
-            if filename.endswith(".py"):
-                language = "Python"
-            elif filename.endswith(".js"):
-                language = "JavaScript"
-            elif filename.endswith(".ts"):
-                language = "TypeScript"
-            elif filename.endswith(".html"):
-                language = "HTML"
+        from ...utils.language_detection import detect_language
+        language = detect_language(filename)
 
         system_prompt = {
             "role": "system",
-            "content": f"""You are a security expert specializing in data protection. Analyze {language} code for data exposure risks ONLY.
+            "content": f"""You are a STRICT security expert analyzing {language} code for REAL data exposure.
 
-Focus on:
-1. Hardcoded passwords, API keys, secrets in code
-2. Sensitive data in logs or error messages
-3. Unencrypted sensitive data storage
-4. Exposing internal paths/structure in responses
-5. PII (personally identifiable information) leaks
-6. Language-specific data handling risks
+ONLY report if you SEE IN THE CODE:
+1. HARDCODED secrets: Literal strings that ARE passwords/keys (e.g., password="abc123", api_key="sk-xxx")
+2. Logging secrets: print(password), logger.info(token), console.log(apiKey)
+3. Secrets in responses: return {{"password": user.password}}
 
-For EACH data exposure issue found, respond with this EXACT format:
+NEVER FLAG (even if code "could be" risky):
+- Classes/functions that MIGHT use credentials internally (don't speculate)
+- Environment variable usage (os.getenv, process.env) - this is CORRECT
+- API client classes without seeing their implementation
+- Code that REFERENCES tokens/keys abstractly without hardcoding them
+- Any speculation like "if the token is hardcoded" - you must SEE the hardcoded value
+- Context managers, HTTP clients, database connections - implementation is elsewhere
+- Configuration loading from files/env (this is proper secret management)
+
+CRITICAL: Do NOT speculate about what MIGHT be in other files or classes.
+Only report what you can ACTUALLY SEE hardcoded in THIS code snippet.
+
+For CONFIRMED exposures (you see the actual secret value), respond with:
 Category: Data Exposure
 Severity: [medium/high/critical]
-Description: [explain what sensitive data is exposed]
-Location: [line X or variable name]
-Fix: [use environment variables, encrypt data, etc.]
-Confidence: [0.0-1.0]
+Description: [the actual hardcoded value or logged secret you found]
+Location: [line X]
+Fix: [use env vars instead]
+Confidence: [0.8-1.0]
 
-Only report actual data exposure risks. If data is properly protected, respond with "No data exposure found."
+If no hardcoded secrets visible, respond with: "No data exposure found."
 """
         }
         

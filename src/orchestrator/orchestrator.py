@@ -21,8 +21,10 @@ from ..agents.bug_detection_agent import BugDetectionAgent
 from ..agents.security_agent import SecurityAnalysisAgent
 from ..agents.test_generation_agent import TestGenerationAgent
 from ..agents.documentation_agent import DocumentationAgent
+from ..agents.pr_description_generator import PRDescriptionGenerator
 from ..memory.agent_memory import AgentMemory, SharedMemory
 from ..utils.logger import get_logger, AgentLogger
+from ..utils.error_handler import safe_agent_execution, create_partial_success_result, GracefulErrorHandler
 
 logger = get_logger(__name__)
 
@@ -37,7 +39,8 @@ class OrchestratorAgent:
         "test_generation",
         "documentation",
         "full_review",
-        "pr_review"
+        "pr_review",
+        "pr_description"
     ]
     
     def __init__(self, config: Dict[str, Any]):
@@ -48,11 +51,14 @@ class OrchestratorAgent:
         self.logger = AgentLogger("orchestrator")
         self._executor = ThreadPoolExecutor(max_workers=4)
         
-        # Initialize Vector Store for long-term memory
+        # Initialize Vector Store for long-term memory (Supabase with ChromaDB fallback)
         try:
-            from ..memory.vector_store import VectorStore
-            self.vector_store = VectorStore()
-            logger.info("Vector Store initialized successfully")
+            from ..memory.supabase_vector_store import get_vector_store
+            self.vector_store = get_vector_store()
+            backend = "Supabase" if self.vector_store.supabase_enabled else (
+                "ChromaDB" if self.vector_store.chromadb_enabled else "in-memory"
+            )
+            logger.info(f"Vector Store initialized with {backend} backend")
         except Exception as e:
             logger.warning(f"Failed to initialize Vector Store: {e}. Running without long-term memory.")
             self.vector_store = None
@@ -71,6 +77,7 @@ class OrchestratorAgent:
             "security": (SecurityAnalysisAgent, self.config.get("security", {})),
             "test_generation": (TestGenerationAgent, self.config.get("test_generation", {})),
             "documentation": (DocumentationAgent, self.config.get("documentation", {})),
+            "pr_description": (PRDescriptionGenerator, self.config.get("pr_description", {})),
         }
         
         for name, (agent_class, agent_config) in agent_configs.items():
@@ -135,8 +142,9 @@ class OrchestratorAgent:
         
         # Step 1: Analyze code
         logger.info("Step 1: Analyzing code...")
-        analysis = self.agents["analysis"].process(code)
-        self.memory.add_task_result(task_id, "analysis", analysis)
+        analysis = self._safe_execute_agent("analysis", code)
+        if analysis.get("status") != "error":
+            self.memory.add_task_result(task_id, "analysis", analysis)
         
         # Step 2: Optional research
         research_results = None
@@ -146,8 +154,9 @@ class OrchestratorAgent:
             )
             if query:
                 logger.info("Step 2: Researching...")
-                research_results = self.agents["research"].process(query)
-                self.memory.add_task_result(task_id, "research", research_results)
+                research_results = self._safe_execute_agent("research", query)
+                if research_results.get("status") != "error":
+                    self.memory.add_task_result(task_id, "research", research_results)
         
         # Step 3: Generate improved code
         logger.info("Step 3: Generating improved code...")
@@ -156,8 +165,9 @@ class OrchestratorAgent:
             "suggestions": analysis.get("suggestions", []),
             "requirements": requirements
         }
-        generation = self.agents["generation"].process(generation_spec)
-        self.memory.add_task_result(task_id, "generation", generation)
+        generation = self._safe_execute_agent("generation", generation_spec)
+        if generation.get("status") != "error":
+            self.memory.add_task_result(task_id, "generation", generation)
         
         return {
             "status": "ok",
@@ -173,8 +183,9 @@ class OrchestratorAgent:
         
         # Step 1: Detect bugs
         logger.info("Step 1: Detecting bugs...")
-        bug_report = self.agents["bug_detection"].process(code)
-        self.memory.add_task_result(task_id, "bug_detection", bug_report)
+        bug_report = self._safe_execute_agent("bug_detection", code)
+        if bug_report.get("status") != "error":
+            self.memory.add_task_result(task_id, "bug_detection", bug_report)
         
         if not bug_report.get("bugs"):
             return {
@@ -197,8 +208,9 @@ class OrchestratorAgent:
             "suggestions": fix_suggestions,
             "requirements": ["Fix all identified bugs while maintaining functionality"]
         }
-        fixed_code = self.agents["generation"].process(generation_spec)
-        self.memory.add_task_result(task_id, "generation", fixed_code)
+        fixed_code = self._safe_execute_agent("generation", generation_spec)
+        if fixed_code.get("status") != "error":
+            self.memory.add_task_result(task_id, "generation", fixed_code)
         
         return {
             "status": "ok",
@@ -213,8 +225,9 @@ class OrchestratorAgent:
         
         # Step 1: Security analysis
         logger.info("Step 1: Running security analysis...")
-        security_report = self.agents["security"].process(code)
-        self.memory.add_task_result(task_id, "security", security_report)
+        security_report = self._safe_execute_agent("security", code)
+        if security_report.get("status") != "error":
+            self.memory.add_task_result(task_id, "security", security_report)
         
         # Step 2: Generate secure code if vulnerabilities found
         secure_code = None
@@ -230,8 +243,9 @@ class OrchestratorAgent:
                 "suggestions": remediation_requirements,
                 "requirements": ["Implement secure coding practices", "Fix all security vulnerabilities"]
             }
-            secure_code = self.agents["generation"].process(generation_spec)
-            self.memory.add_task_result(task_id, "generation", secure_code)
+            secure_code = self._safe_execute_agent("generation", generation_spec)
+            if secure_code.get("status") != "error":
+                self.memory.add_task_result(task_id, "generation", secure_code)
         
         return {
             "status": "ok",
@@ -248,12 +262,13 @@ class OrchestratorAgent:
         coverage_focus = input_data.get("coverage_focus", ["happy_path", "edge_cases", "error_handling"])
         
         logger.info("Generating test cases...")
-        test_result = self.agents["test_generation"].process({
+        test_result = self._safe_execute_agent("test_generation", {
             "code": code,
             "framework": framework,
             "coverage_focus": coverage_focus
         })
-        self.memory.add_task_result(task_id, "test_generation", test_result)
+        if test_result.get("status") != "error":
+            self.memory.add_task_result(task_id, "test_generation", test_result)
         
         return {
             "status": "ok",
@@ -268,12 +283,13 @@ class OrchestratorAgent:
         style = input_data.get("style", "google")
         
         logger.info(f"Generating {doc_type} documentation...")
-        doc_result = self.agents["documentation"].process({
+        doc_result = self._safe_execute_agent("documentation", {
             "code": code,
             "doc_type": doc_type,
             "style": style
         })
-        self.memory.add_task_result(task_id, "documentation", doc_result)
+        if doc_result.get("status") != "error":
+            self.memory.add_task_result(task_id, "documentation", doc_result)
         
         return {
             "status": "ok",
@@ -282,56 +298,95 @@ class OrchestratorAgent:
         }
     
     def _handle_full_review(self, input_data: Dict[str, Any], task_id: str) -> Dict[str, Any]:
-        """Handle comprehensive full review task (runs all agents)."""
+        """Handle comprehensive full review task (runs all agents).
+        
+        Uses graceful error handling - if one agent fails, others continue.
+        """
         code = input_data.get("code", "")
         
-        results = {
-            "status": "ok",
-            "task_id": task_id
-        }
+        successful_agents = {}
+        failed_agents = {}
         
-        # Run all analyses
+        # Run all analyses with graceful error handling
         logger.info("Running full code review...")
         
         # 1. Code Analysis
         logger.info("Step 1/5: Code analysis...")
-        results["analysis"] = self.agents["analysis"].process(code)
+        analysis = self._safe_execute_agent("analysis", code)
+        if analysis.get("status") == "error":
+            failed_agents["analysis"] = analysis
+        else:
+            successful_agents["analysis"] = analysis
         
         # 2. Bug Detection
         logger.info("Step 2/5: Bug detection...")
-        results["bug_report"] = self.agents["bug_detection"].process(code)
+        bug_report = self._safe_execute_agent("bug_detection", code)
+        if bug_report.get("status") == "error":
+            failed_agents["bug_detection"] = bug_report
+        else:
+            successful_agents["bug_detection"] = bug_report
         
         # 3. Security Audit
         logger.info("Step 3/5: Security audit...")
-        results["security_report"] = self.agents["security"].process(code)
+        security_report = self._safe_execute_agent("security", code)
+        if security_report.get("status") == "error":
+            failed_agents["security"] = security_report
+        else:
+            successful_agents["security"] = security_report
         
         # 4. Test Generation
         logger.info("Step 4/5: Test generation...")
-        results["tests"] = self.agents["test_generation"].process({
+        tests = self._safe_execute_agent("test_generation", {
             "code": code,
             "framework": input_data.get("framework", "pytest")
         })
+        if tests.get("status") == "error":
+            failed_agents["test_generation"] = tests
+        else:
+            successful_agents["test_generation"] = tests
         
-        # 5. Generate improved code based on all findings
+        # 5. Generate improved code based on all findings from successful agents
         logger.info("Step 5/5: Generating improved code...")
         all_suggestions = []
-        all_suggestions.extend(results["analysis"].get("suggestions", []))
-        all_suggestions.extend([
-            f"Fix bug: {b.get('description', '')}"
-            for b in results["bug_report"].get("bugs", [])
-        ])
-        all_suggestions.extend([
-            f"Fix security: {v.get('description', '')}"
-            for v in results["security_report"].get("vulnerabilities", [])
-        ])
         
-        results["improved_code"] = self.agents["generation"].process({
+        # Collect suggestions from successful agents only
+        if "analysis" in successful_agents:
+            all_suggestions.extend(successful_agents["analysis"].get("suggestions", []))
+        if "bug_detection" in successful_agents:
+            all_suggestions.extend([
+                f"Fix bug: {b.get('description', '')}"
+                for b in successful_agents["bug_detection"].get("bugs", [])
+            ])
+        if "security" in successful_agents:
+            all_suggestions.extend([
+                f"Fix security: {v.get('description', '')}"
+                for v in successful_agents["security"].get("vulnerabilities", [])
+            ])
+        
+        improved_code = self._safe_execute_agent("generation", {
             "code": code,
             "suggestions": all_suggestions,
             "requirements": input_data.get("requirements", [])
         })
         
-        return results
+        if improved_code.get("status") == "error":
+            failed_agents["generation"] = improved_code
+        else:
+            successful_agents["generation"] = improved_code
+        
+        # Create result based on successes and failures
+        if failed_agents:
+            return create_partial_success_result(
+                successful_agents,
+                failed_agents,
+                total_agents=5
+            )
+        
+        return {
+            "status": "ok",
+            "task_id": task_id,
+            **successful_agents
+        }
     
     def _handle_pr_review(self, input_data: Dict[str, Any], task_id: str) -> Dict[str, Any]:
         """Handle GitHub Pull Request review task."""
@@ -391,14 +446,14 @@ class OrchestratorAgent:
                     try:
                         # Search for relevant context for this PR/Repo
                         # For now, we just get general context. In future, we can be more specific.
-                        results = self.vector_store.search(
+                        context_results = self.vector_store.search(
                             query=f"Context for PR #{pr_number} in {repo_id}",
                             repo_id=repo_id,
                             n_results=3
                         )
-                        if results:
-                            context = "\n".join([r["content"] for r in results])
-                            logger.info(f"Retrieved {len(results)} context items from Vector Store")
+                        if context_results:
+                            context = "\n".join([r["content"] for r in context_results])
+                            logger.info(f"Retrieved {len(context_results)} context items from Vector Store")
                     except Exception as e:
                         logger.warning(f"Failed to retrieve context: {e}")
 
@@ -488,6 +543,53 @@ class OrchestratorAgent:
         summary_parts.append("---\n*Generated by Multi-Agent Code Review System*")
         
         return "".join(summary_parts)
+    
+    def _safe_execute_agent(self, agent_name: str, input_data: Any) -> Dict[str, Any]:
+        """Safely execute an agent with graceful error handling.
+        
+        If the agent fails, logs the error and returns error dict instead of crashing.
+        
+        Args:
+            agent_name: Name of the agent to execute
+            input_data: Input data for the agent
+            
+        Returns:
+            Agent result or error dict with status='error'
+        """
+        try:
+            if agent_name not in self.agents:
+                logger.error(f"Agent '{agent_name}' not found")
+                return {
+                    "status": "error",
+                    "agent": agent_name,
+                    "error_type": "AgentNotFound",
+                    "error_message": f"The {agent_name} agent is not available",
+                    "technical_details": f"Agent '{agent_name}' not initialized"
+                }
+            
+            logger.info(f"Executing {agent_name} agent...")
+            result = self.agents[agent_name].process(input_data)
+            
+            # Ensure result has status field
+            if not isinstance(result, dict):
+                result = {"status": "ok", "result": result}
+            elif "status" not in result:
+                result["status"] = "ok"
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Agent '{agent_name}' failed: {e}", exc_info=True)
+            
+            from ..utils.error_handler import get_user_friendly_error_message
+            
+            return {
+                "status": "error",
+                "agent": agent_name,
+                "error_type": type(e).__name__,
+                "error_message": get_user_friendly_error_message(e, agent_name),
+                "technical_details": str(e)
+            }
     
     async def run_parallel_agents(
         self,

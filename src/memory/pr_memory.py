@@ -1,10 +1,12 @@
 """PR Memory Manager - Maintains context across InspectAI commands.
 
-This module uses VectorStore to maintain persistent memory about:
+This module uses the unified VectorStore to maintain persistent memory about:
 - PR analysis history
 - Bug findings that need to be fixed
 - Previous reviews and suggestions
 - Cross-command context
+
+Uses Supabase pgvector as primary storage with ChromaDB fallback.
 
 This enables commands to work together:
 - /inspectai_bugs stores findings
@@ -16,7 +18,7 @@ import time
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 
-from .vector_store import VectorStore
+from .supabase_vector_store import get_vector_store
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -47,21 +49,27 @@ class PRMemoryManager:
     """Manages persistent memory for PR analysis across commands.
     
     Memory is isolated per repository and PR number.
+    Uses Supabase pgvector with ChromaDB fallback.
     """
     
     def __init__(self, persist_path: str = ".chroma_db"):
         """Initialize PR memory manager.
         
         Args:
-            persist_path: Path to store ChromaDB data
+            persist_path: Path for ChromaDB persistence (used as fallback)
         """
+        # Always initialize fallback first
+        self._memory_fallback: Dict[str, List[Dict]] = {}
+        
         try:
-            self.vector_store = VectorStore(persist_path)
-            logger.info("PRMemoryManager initialized")
+            self.vector_store = get_vector_store(persist_path)
+            backend = "Supabase" if self.vector_store.supabase_enabled else (
+                "ChromaDB" if self.vector_store.chromadb_enabled else "in-memory"
+            )
+            logger.info(f"PRMemoryManager initialized with {backend} backend")
         except Exception as e:
             logger.warning(f"VectorStore initialization failed: {e}. Using in-memory fallback.")
             self.vector_store = None
-            self._memory_fallback: Dict[str, List[Dict]] = {}
     
     def _get_repo_id(self, repo_full_name: str, pr_number: int) -> str:
         """Generate unique repo ID for isolation."""
@@ -118,6 +126,8 @@ class PRMemoryManager:
             Number of findings stored
         """
         repo_id = self._get_repo_id(repo_full_name, pr_number)
+        logger.info(f"[PR_MEMORY] store_bug_findings called for {repo_id} with {len(findings)} findings")
+        logger.info(f"[PR_MEMORY] Using VectorStore: {self.vector_store is not None}")
         
         # Clear previous findings first - only keep latest
         self.clear_bug_findings(repo_full_name, pr_number)
@@ -152,14 +162,17 @@ class PRMemoryManager:
                 doc_id = f"{repo_id}:{finding.file_path}:{finding.line_number}:{int(time.time()*1000)}"
                 self.vector_store.add_document(text, metadata, doc_id)
                 stored_count += 1
+                logger.info(f"[PR_MEMORY] Stored in VectorStore: {finding.file_path}:{finding.line_number}")
             else:
                 # Fallback to in-memory storage
                 if repo_id not in self._memory_fallback:
                     self._memory_fallback[repo_id] = []
                 self._memory_fallback[repo_id].append(metadata)
                 stored_count += 1
+                logger.info(f"[PR_MEMORY] Stored in fallback: {finding.file_path}:{finding.line_number}")
         
-        logger.info(f"Stored {stored_count} bug findings for {repo_id}")
+        logger.info(f"[PR_MEMORY] Total stored: {stored_count} bug findings for {repo_id}")
+        logger.info(f"[PR_MEMORY] Memory fallback now has keys: {list(self._memory_fallback.keys())}")
         return stored_count
     
     def get_unfixed_bugs(
@@ -179,6 +192,9 @@ class PRMemoryManager:
             List of unfixed bug findings
         """
         repo_id = self._get_repo_id(repo_full_name, pr_number)
+        logger.info(f"[PR_MEMORY] get_unfixed_bugs called for {repo_id}")
+        logger.info(f"[PR_MEMORY] Using VectorStore: {self.vector_store is not None}")
+        logger.info(f"[PR_MEMORY] Memory fallback keys: {list(self._memory_fallback.keys())}")
         
         if self.vector_store:
             # Search for bug findings
@@ -186,12 +202,14 @@ class PRMemoryManager:
             if file_path:
                 additional_filter["file_path"] = file_path
             
+            logger.info(f"[PR_MEMORY] Searching VectorStore with filter: {additional_filter}")
             results = self.vector_store.search(
                 query="bug finding unfixed",
                 repo_id=repo_id,
                 n_results=50,
                 additional_filter=additional_filter
             )
+            logger.info(f"[PR_MEMORY] VectorStore returned {len(results)} results")
             
             findings = []
             for result in results:
@@ -202,19 +220,26 @@ class PRMemoryManager:
                 except Exception as e:
                     logger.warning(f"Failed to parse bug finding: {e}")
             
+            logger.info(f"[PR_MEMORY] Returning {len(findings)} unfixed bugs from VectorStore")
             return findings
         else:
             # Fallback
+            logger.info(f"[PR_MEMORY] Using in-memory fallback")
+            items_for_repo = self._memory_fallback.get(repo_id, [])
+            logger.info(f"[PR_MEMORY] Found {len(items_for_repo)} items for {repo_id}")
+            
             findings = []
-            for item in self._memory_fallback.get(repo_id, []):
+            for item in items_for_repo:
                 if item.get("type") == "bug_finding" and not item.get("fixed", False):
                     if file_path and item.get("file_path") != file_path:
                         continue
                     try:
                         data = json.loads(item.get("data", "{}"))
                         findings.append(BugFinding.from_dict(data))
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"[PR_MEMORY] Failed to parse: {e}")
+            
+            logger.info(f"[PR_MEMORY] Returning {len(findings)} unfixed bugs from fallback")
             return findings
     
     def mark_bugs_fixed(

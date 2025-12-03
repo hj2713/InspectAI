@@ -1,0 +1,40 @@
+{
+  "examples": [
+    {
+      "language": "python",
+      "input_code": "import pickle\n\ndef load_user_data(file_path):\n    with open(file_path, 'rb') as f:\n        return pickle.load(f)",
+      "expected_output": {
+        "line": 5,
+        "severity": "critical",
+        "category": "security",
+        "description": "Unsafe deserialization. pickle.load() on untrusted data can execute arbitrary code during deserialization.",
+        "fix_suggestion": "Use safe alternatives like json.load() for data. If pickle is required, validate file source and consider using pickle with restricted unpickler.",
+        "confidence": 0.95
+      }
+    },
+    {
+      "language": "python",
+      "input_code": "import os\n\ndef run_command(user_input):\n    os.system(f'echo {user_input}')",
+      "expected_output": {
+        "line": 4,
+        "severity": "critical",
+        "category": "security",
+        "description": "Command injection vulnerability. User input is directly interpolated into shell command.",
+        "fix_suggestion": "Use subprocess with shell=False and pass arguments as list: subprocess.run(['echo', user_input], shell=False)",
+        "confidence": 0.95
+      }
+    },
+    {
+      "language": "python",
+      "input_code": "API_KEY = 'sk-1234567890abcdef'\nDATABASE_PASSWORD = 'admin123'",
+      "expected_output": {
+        "line": 1,
+        "severity": "critical",
+        "category": "security",
+        "description": "Hardcoded secrets. API keys and passwords should never be committed to code.",
+        "fix_suggestion": "Use environment variables: API_KEY = os.environ.get('API_KEY') or a secrets manager.",
+        "confidence": 0.95
+      }
+    }
+  ]
+}
