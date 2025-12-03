@@ -271,7 +271,7 @@ Comment these on any Pull Request to trigger InspectAI:
 | `/inspectai_bugs` | **BugDetectionAgent** | Deep scan of **entire files** with changes using 4 specialized sub-agents running in parallel. Finds logic errors, edge cases, type errors, runtime issues. |
 | `/inspectai_refactor` | **CodeGenerationAgent** | Code improvement suggestions for changed code. Recommends better patterns, cleaner abstractions, performance optimizations. |
 | `/inspectai_security` | **SecurityAgent** | Security vulnerability scan with 4 specialized scanners: Injection, Auth, Data Exposure, Dependency vulnerabilities. Risk scoring included. |
-| `/inspectai_tests` | **TestGenerationAgent** | Generate unit tests (pytest) for changed Python files. Creates comprehensive test cases with edge cases and error handling. |
+| `/inspectai_tests` | **TestGenerationAgent** | Generate unit tests (pytest) for **changed code only** (diff-aware). Files >500 lines skipped. Multiple files processed in parallel for speed. |
 | `/inspectai_docs` | **DocumentationAgent** | Generate/update docstrings and documentation for changed code. Uses Google-style docstrings for Python. |
 | `/inspectai_help` | - | Shows all available commands with descriptions. |
 
@@ -1910,6 +1910,60 @@ PR Diff:
 ```
 
 **Exception**: Bug detection scans entire file because bugs may exist in code that calls the changed function.
+
+---
+
+### Q: Why does `/inspectai_tests` skip large files and process in parallel?
+
+**A:** Test generation is optimized for speed and reliability:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 Test Generation Pipeline                        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. File Filtering                                               │
+│    • Skip files > 500 lines (high LLM payload = slow response)  │
+│    • Only process .py files                                     │
+│    • Log skipped files for transparency                         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. Diff-Aware Analysis                                          │
+│    • Parse diff to extract ONLY changed/added lines             │
+│    • Don't send entire file to LLM (wastes tokens)              │
+│    • Focus tests on new code, not existing stable code          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 3. Parallel Processing                                          │
+│    • ThreadPoolExecutor(max_workers=3)                          │
+│    • Process multiple files simultaneously                      │
+│    • 3x faster than sequential for multi-file PRs               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 4. Response Generation                                          │
+│    • Aggregate results from all files                           │
+│    • Note which files were skipped and why                      │
+│    • Post as single PR comment                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why skip files > 500 lines?**
+- Large files = large LLM payload = slow response (can exceed 60s timeout)
+- Tests for 500+ line files should be written incrementally, not all at once
+- Prevents webhook timeouts and GitHub API errors
+
+**Why diff-aware instead of full file?**
+- Sending 926 lines to generate tests for 20 changed lines is wasteful
+- Focused tests are more relevant (test what you changed)
+- Faster LLM response (smaller input = faster processing)
 
 ---
 
