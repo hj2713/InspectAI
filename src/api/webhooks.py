@@ -2545,6 +2545,11 @@ async def github_webhook(
                 command = "docs"
             elif "/inspectai_help" in comment_body:
                 command = "help"
+            # Hidden developer commands
+            elif "/inspectai_reindex" in comment_body:
+                command = "reindex"
+            elif "/inspectai_status" in comment_body:
+                command = "status"
             
             if command:
                 logger.info(f"/InspectAI_{command} command detected on {repo_full_name}#{pr_number} by {comment_author}")
