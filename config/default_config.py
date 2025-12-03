@@ -72,13 +72,6 @@ ORCHESTRATOR_CONFIG = {
     }
 }
 
-# Filter Pipeline Configuration
-FILTER_CONFIG = {
-    "confidence_threshold": 0.5,  # Default for code review
-    "similarity_threshold": 85,  # For deduplication (0-100)
-    "strict_evidence": False  # Set to True to require evidence for all findings
-}
-
 # Logging configuration
 LOGGING_CONFIG = {
     "level": "INFO",
