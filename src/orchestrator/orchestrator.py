@@ -21,6 +21,7 @@ from ..agents.bug_detection_agent import BugDetectionAgent
 from ..agents.security_agent import SecurityAnalysisAgent
 from ..agents.test_generation_agent import TestGenerationAgent
 from ..agents.documentation_agent import DocumentationAgent
+from ..agents.pr_description_generator import PRDescriptionGenerator
 from ..memory.agent_memory import AgentMemory, SharedMemory
 from ..utils.logger import get_logger, AgentLogger
 
@@ -37,7 +38,8 @@ class OrchestratorAgent:
         "test_generation",
         "documentation",
         "full_review",
-        "pr_review"
+        "pr_review",
+        "pr_description"
     ]
     
     def __init__(self, config: Dict[str, Any]):
@@ -71,6 +73,7 @@ class OrchestratorAgent:
             "security": (SecurityAnalysisAgent, self.config.get("security", {})),
             "test_generation": (TestGenerationAgent, self.config.get("test_generation", {})),
             "documentation": (DocumentationAgent, self.config.get("documentation", {})),
+            "pr_description": (PRDescriptionGenerator, self.config.get("pr_description", {})),
         }
         
         for name, (agent_class, agent_config) in agent_configs.items():
