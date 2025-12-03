@@ -396,6 +396,54 @@ class StructuredContext:
 - **Few-Shot Learning**: Curated examples for consistent output format
 - **JSON Schema**: Enforced structured output with validation
 
+**Architecture Diagram:**
+
+![PromptBuilder Architecture](docs/images/prompt_builder_architecture.png)
+
+```
+GitHub PR Event
+       │
+       ▼
+┌──────────────────────────────────────┐
+│  Webhook Handler (webhooks.py)       │
+│  - Graceful error handling per file  │
+│  - User-friendly error messages      │
+└──────────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────┐
+│  Orchestrator                        │
+│  - _safe_execute_agent() wraps calls │
+│  - Partial success tracking          │
+└──────────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────┐
+│  Agents (CodeReviewExpert,           │
+│  BugDetection, Security, etc.)       │
+│  - Use PromptBuilder                 │
+│  - Language-specific rules injected  │
+│  - Few-shot examples included        │
+└──────────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────────────────────────┐
+│  PromptBuilder                                               │
+│  ┌──────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ Role         │  │ Language Rules  │  │ Few-shot        │ │
+│  │ Definition   │  │ (18 Python,     │  │ Examples        │ │
+│  │              │  │  18 JS rules..) │  │                 │ │
+│  └──────────────┘  └─────────────────┘  └─────────────────┘ │
+│  ┌──────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │ Structured   │  │ Security Checks │  │ Output Schema   │ │
+│  │ Context      │  │ (OWASP-aligned) │  │ (JSON format)   │ │
+│  └──────────────┘  └─────────────────┘  └─────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+   LLM (Gemini 2.0-flash / GPT-4 / Bytez)
+```
+
 ---
 
 ### 3. Multi-Layer Quality Filtering
