@@ -1,0 +1,40 @@
+{
+  "examples": [
+    {
+      "language": "python",
+      "input_code": "def get_item(items, index):\n    return items[index]",
+      "expected_output": {
+        "line": 2,
+        "severity": "medium",
+        "category": "bug",
+        "description": "No bounds checking. Will raise IndexError if index is out of range.",
+        "fix_suggestion": "Add bounds check: if 0 <= index < len(items): return items[index] else: return None",
+        "confidence": 0.75
+      }
+    },
+    {
+      "language": "python",
+      "input_code": "def process_user(user):\n    name = user['name'].upper()\n    return name",
+      "expected_output": {
+        "line": 2,
+        "severity": "medium",
+        "category": "bug",
+        "description": "No null check. Will raise KeyError if 'name' key doesn't exist, or AttributeError if value is None.",
+        "fix_suggestion": "Add defensive checks: name = user.get('name', '').upper() or if user and user.get('name'): name = user['name'].upper()",
+        "confidence": 0.8
+      }
+    },
+    {
+      "language": "python",
+      "input_code": "for i in range(len(items)):\n    if items[i] == target:\n        items.remove(items[i])",
+      "expected_output": {
+        "line": 3,
+        "severity": "high",
+        "category": "bug",
+        "description": "Modifying list while iterating. Removing items shifts indices, causing skipped elements or IndexError.",
+        "fix_suggestion": "Iterate over a copy or use list comprehension: items = [item for item in items if item != target]",
+        "confidence": 0.9
+      }
+    }
+  ]
+}

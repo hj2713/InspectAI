@@ -1,0 +1,40 @@
+{
+  "examples": [
+    {
+      "language": "javascript",
+      "input_code": "function getUserById(id) {\n    return users.find(u => u.id == id);\n}",
+      "expected_output": {
+        "line": 2,
+        "severity": "medium",
+        "category": "bug",
+        "description": "Using == instead of === for comparison. This allows type coercion which can cause unexpected matches (e.g., '5' == 5 is true).",
+        "fix_suggestion": "Use strict equality: users.find(u => u.id === id)",
+        "confidence": 0.85
+      }
+    },
+    {
+      "language": "javascript",
+      "input_code": "async function fetchData(url) {\n    fetch(url).then(r => r.json());\n}",
+      "expected_output": {
+        "line": 2,
+        "severity": "high",
+        "category": "bug",
+        "description": "Floating Promise. The fetch result is not awaited or returned, so errors will be silently ignored and caller gets undefined.",
+        "fix_suggestion": "Return or await the promise: return fetch(url).then(r => r.json()); or const data = await fetch(url).then(r => r.json()); return data;",
+        "confidence": 0.9
+      }
+    },
+    {
+      "language": "javascript",
+      "input_code": "function displayMessage(userInput) {\n    document.getElementById('msg').innerHTML = userInput;\n}",
+      "expected_output": {
+        "line": 2,
+        "severity": "critical",
+        "category": "security",
+        "description": "XSS vulnerability. User input directly assigned to innerHTML can execute malicious scripts.",
+        "fix_suggestion": "Use textContent for safe text insertion: document.getElementById('msg').textContent = userInput",
+        "confidence": 0.95
+      }
+    }
+  ]
+}

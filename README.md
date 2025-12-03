@@ -72,12 +72,12 @@ OrchestratorAgent (Coordinates all agents with ThreadPoolExecutor)
     └── Generates/updates documentation
 ```
 
-### Key Architectural Improvements
+### Key Architectural Features
 
-- **Expert Reviewer**: Replaced 4 generic sub-agents (NamingReviewer, QualityReviewer, DuplicationDetector, PEP8Reviewer) with single comprehensive `CodeReviewExpert`
-- **Parallel File Processing**: Files analyzed concurrently using `ThreadPoolExecutor` (5 workers) instead of sequential processing
-- **Diff-Aware Context**: Expert understands git diffs - won't suggest "add docstring" when you intentionally removed it
-- **Filter Pipeline**: Deduplication, confidence thresholds, and hallucination detection for high-quality findings
+- **Expert Code Reviewer**: `CodeReviewExpert` provides senior developer-level analysis with deep understanding of code context
+- **Parallel File Processing**: Files analyzed concurrently using `ThreadPoolExecutor` (5 workers)
+- **Diff-Aware Analysis**: Understands git diffs - distinguishes between additions, removals, and modifications
+- **Quality Filtering**: Deduplication, confidence thresholds, and hallucination detection for high-quality findings
 
 ---
 
@@ -201,7 +201,7 @@ InspectAI/
 ├── src/
 │   ├── agents/                    # 7 specialized agents
 │   │   ├── base_agent.py          # Abstract base class for all agents
-│   │   ├── code_review_expert.py  # NEW: Expert code reviewer (senior dev level)
+│   │   ├── code_review_expert.py  # Expert code reviewer (senior dev level)
 │   │   ├── code_analysis_agent.py # Orchestrates CodeReviewExpert
 │   │   ├── bug_detection_agent.py # Orchestrates 4 bug detection sub-agents
 │   │   ├── security_agent.py      # Orchestrates 4 security sub-agents
