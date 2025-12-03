@@ -267,9 +267,9 @@ Comment these on any Pull Request to trigger InspectAI:
 
 | Command | Agent Used | What It Does |
 |---------|-----------|--------------|
-| `/inspectai_review` | **CodeReviewExpert** | Reviews **only changed lines** in PR diff. Senior developer perspective focusing on bugs, logic errors, security issues in new/modified code. |
-| `/inspectai_bugs` | **BugDetectionAgent** | Deep scan of **entire files** with changes using 4 specialized sub-agents running in parallel. Finds logic errors, edge cases, type errors, runtime issues. |
-| `/inspectai_refactor` | **CodeGenerationAgent** | Code improvement suggestions for changed code. Recommends better patterns, cleaner abstractions, performance optimizations. |
+| `/inspectai_review` | **CodeReviewExpert** | **Comprehensive review** of changed lines - bugs, logic errors, missing error handling, code quality issues. Combines bug detection + refactoring suggestions in one command. |
+| `/inspectai_bugs` | **BugDetectionAgent** | Deep scan using 4 specialized sub-agents in parallel. Finds logic errors, edge cases, type errors, runtime issues. **Line numbers auto-snapped** to nearest diff line. |
+| `/inspectai_refactor` | *(same as review)* | **Redirects to `/inspectai_review`** - combined for a comprehensive single-pass review. |
 | `/inspectai_security` | **SecurityAgent** | Security vulnerability scan with 4 specialized scanners: Injection, Auth, Data Exposure, Dependency vulnerabilities. Risk scoring included. |
 | `/inspectai_tests` | **TestGenerationAgent** | Generate unit tests (pytest) for **changed code only** (diff-aware). Files >500 lines skipped. Multiple files processed in parallel for speed. |
 | `/inspectai_docs` | **DocumentationAgent** | Generate/update docstrings and documentation for changed code. Uses Google-style docstrings for Python. |

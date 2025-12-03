@@ -239,29 +239,82 @@ def extract_line_number_from_finding(finding: Dict[str, Any]) -> Optional[int]:
     Returns:
         Line number or None
     """
-    location = finding.get("location", "")
-    if not location:
-        # Try to get from line_number field directly
-        line_num = finding.get("line_number") or finding.get("line")
+    # Try multiple fields in priority order
+    for field in ["line_number", "line", "location"]:
+        value = finding.get(field)
+        if value is None:
+            continue
+            
+        # If it's already an int
+        if isinstance(value, int):
+            return value
+        
+        # Try direct conversion
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            pass
+        
+        # Try pattern matching for strings like "line 5", "L5", ":5"
+        if isinstance(value, str):
+            patterns = [
+                r'line\s*(\d+)',
+                r'L(\d+)',
+                r':(\d+)',
+                r'^(\d+)$'
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, value, re.IGNORECASE)
+                if match:
+                    return int(match.group(1))
+    
+    # Also check evidence dict
+    evidence = finding.get("evidence", {})
+    if isinstance(evidence, dict):
+        line_num = evidence.get("line_number") or evidence.get("line")
         if line_num:
             try:
                 return int(line_num)
             except (ValueError, TypeError):
                 pass
+    
+    return None
+
+
+def snap_to_nearest_diff_line(line_num: int, diff_lines: set, max_distance: int = 5) -> Optional[int]:
+    """Snap a line number to the nearest valid diff line.
+    
+    LLMs sometimes report line numbers that are off by a few lines.
+    This function finds the closest valid diff line within max_distance.
+    
+    Args:
+        line_num: The line number reported by the LLM
+        diff_lines: Set of valid line numbers from the diff
+        max_distance: Maximum distance to snap (default 5 lines)
+        
+    Returns:
+        Nearest valid diff line, or None if no line within distance
+    """
+    if not diff_lines or line_num is None:
         return None
     
-    # Try various patterns
-    patterns = [
-        r'line\s*(\d+)',
-        r'L(\d+)',
-        r':(\d+)',
-        r'^(\d+)$'
-    ]
+    # If the line is already in the diff, return it
+    if line_num in diff_lines:
+        return line_num
     
-    for pattern in patterns:
-        match = re.search(pattern, str(location), re.IGNORECASE)
-        if match:
-            return int(match.group(1))
+    # Find the nearest diff line within max_distance
+    nearest = None
+    min_distance = max_distance + 1
+    
+    for diff_line in diff_lines:
+        distance = abs(diff_line - line_num)
+        if distance < min_distance:
+            min_distance = distance
+            nearest = diff_line
+    
+    if min_distance <= max_distance:
+        logger.debug(f"[SNAP] Snapped line {line_num} to {nearest} (distance: {min_distance})")
+        return nearest
     
     return None
 
@@ -542,7 +595,9 @@ async def handle_agent_command(
                     repo_full_name, pr_number, pr, comment_author
                 )
             elif command == "refactor":
-                return await _handle_refactor_command(
+                # Refactor is now combined with review - redirect
+                logger.info(f"[REFACTOR] Redirecting to combined review command")
+                return await _handle_review_command(
                     github_client, orchestrator, pr_memory,
                     repo_full_name, pr_number, pr, comment_author
                 )
@@ -665,7 +720,7 @@ CODEBASE CONTEXT (from indexed repository):
 {chr(10).join(context_items)}
 """
             
-            # Build diff context for the LLM
+            # Build diff context for the LLM - comprehensive review (bugs + improvements)
             diff_context = f"""FILE: {pr_file.filename}
 DIFF PATCH (shows what was changed with + for additions, - for removals):
 ```diff
@@ -679,13 +734,31 @@ FULL FILE CONTEXT:
 
 CHANGED LINE RANGES: {', '.join([f'{s}-{e}' for s, e, _ in changed_ranges])}
 {file_context_str}
-IMPORTANT INSTRUCTIONS:
-1. ONLY report issues that are CAUSED BY or INTRODUCED BY the changes shown in the diff
-2. Do NOT suggest general improvements to unchanged code
-3. Focus on: bugs introduced by changes, missing error handling for new code, logic errors in changed code
-4. If the changed code looks correct, report nothing - do not nitpick
-5. Each issue MUST include the exact line number from the changed ranges above
-6. If codebase context shows this function has many callers, be extra careful about breaking changes
+REVIEW INSTRUCTIONS - Be thorough but focused:
+
+**BUGS & ERRORS (High Priority):**
+1. Logic errors, incorrect conditions, wrong operators
+2. Off-by-one errors in loops or array access
+3. Null/undefined access without checks
+4. Resource leaks (unclosed files, connections)
+5. Race conditions or threading issues
+6. Type mismatches or incorrect conversions
+
+**CODE QUALITY (Medium Priority):**
+1. Missing error handling for operations that can fail
+2. Hardcoded values that should be configurable
+3. Inefficient algorithms (O(n²) when O(n) is possible)
+4. Code that will break in edge cases
+
+**DO NOT REPORT:**
+- Style preferences (formatting, naming that works fine)
+- General suggestions for code that wasn't changed
+- Theoretical issues that are unlikely in practice
+
+**OUTPUT FORMAT:**
+- Each issue MUST reference a specific line number from the changed ranges
+- Include severity: critical (will crash), high (likely bug), medium (potential issue), low (improvement)
+- Be specific about what's wrong and how to fix it
 """
             
             logger.info(f"[REVIEW] Analyzing {len(changed_ranges)} changed regions in {pr_file.filename}")
@@ -698,27 +771,28 @@ IMPORTANT INSTRUCTIONS:
                 logger.warning(f"[REVIEW] Analysis failed for {pr_file.filename}: {analysis.get('error_message')}")
                 return []  # Return empty instead of crashing
             
-            # Create inline comments for findings - only for lines actually in the diff
+            # Create inline comments for findings - snap to nearest diff line
+            # Get diff lines for snapping
+            diff_lines = set()
+            for start, end, _ in changed_ranges:
+                diff_lines.update(range(start, end + 1))
+            
             file_comments = []
             for suggestion in analysis.get("suggestions", []):
                 if isinstance(suggestion, dict):
-                    line_num = extract_line_number_from_finding(suggestion)
+                    raw_line_num = extract_line_number_from_finding(suggestion)
                     
                     # Skip findings without a valid line number
-                    if not line_num:
+                    if not raw_line_num:
                         logger.debug(f"[REVIEW] Skipping finding without line number: {suggestion.get('description', '')[:50]}")
                         continue
                     
-                    # Check if line is actually in the diff - skip if not
-                    valid_line = None
-                    for start, end, _ in changed_ranges:
-                        if start <= line_num <= end:
-                            valid_line = line_num
-                            break
+                    # Snap to nearest valid diff line (LLMs often report slightly wrong line numbers)
+                    valid_line = snap_to_nearest_diff_line(raw_line_num, diff_lines, max_distance=3)
                     
-                    # Skip findings on lines that weren't changed (prevents irrelevant comments)
+                    # Skip findings on lines that aren't near any changed line
                     if valid_line is None:
-                        logger.debug(f"[REVIEW] Skipping finding on unchanged line {line_num}: {suggestion.get('description', '')[:50]}")
+                        logger.debug(f"[REVIEW] Skipping finding on line {raw_line_num} - not near diff")
                         continue
                     
                     comment_body = _format_inline_comment(suggestion)
@@ -984,14 +1058,16 @@ Only report ACTUAL BUGS introduced by the changed code.
             else:
                 logger.info(f"[BUGS] Security scan returned {security_result.get('vulnerability_count', 0)} vulnerabilities")
             
-            # Convert to BugFinding objects - only keep bugs on changed lines
+            # Convert to BugFinding objects - snap to nearest diff line if needed
             for bug in bugs_result.get("bugs", []):
                 if isinstance(bug, dict):
-                    line_num = extract_line_number_from_finding(bug) or 1
+                    raw_line_num = extract_line_number_from_finding(bug)
                     
-                    # Only include bugs on lines that were actually changed
-                    if line_num not in diff_lines:
-                        logger.debug(f"[BUGS] Skipping bug on line {line_num} - not in diff")
+                    # Snap to nearest valid diff line (LLMs often report slightly wrong line numbers)
+                    line_num = snap_to_nearest_diff_line(raw_line_num, diff_lines, max_distance=5)
+                    
+                    if line_num is None:
+                        logger.debug(f"[BUGS] Skipping bug - line {raw_line_num} not near any diff line")
                         continue
                     
                     finding = BugFinding(
@@ -1013,13 +1089,15 @@ Only report ACTUAL BUGS introduced by the changed code.
                         "body": _format_bug_comment(finding)
                     })
             
-            # Add security vulnerabilities
+            # Add security vulnerabilities - also snap to nearest diff line
             for vuln in security_result.get("vulnerabilities", []):
                 if isinstance(vuln, dict):
-                    line_num = extract_line_number_from_finding(vuln) or 1
+                    raw_line_num = extract_line_number_from_finding(vuln)
                     
-                    # Only include vulnerabilities on lines that were actually changed
-                    if line_num not in diff_lines:
+                    # Snap to nearest valid diff line
+                    line_num = snap_to_nearest_diff_line(raw_line_num, diff_lines, max_distance=5)
+                    
+                    if line_num is None:
                         continue
                     
                     finding = BugFinding(
@@ -1434,13 +1512,15 @@ ONLY report vulnerabilities in the changed code (lines {sorted(diff_lines)}).
             
             logger.info(f"[SECURITY] Found {security_result.get('vulnerability_count', 0)} vulnerabilities")
             
-            # Process vulnerabilities
+            # Process vulnerabilities - snap to nearest diff line
             for vuln in security_result.get("vulnerabilities", []):
                 if isinstance(vuln, dict):
-                    line_num = extract_line_number_from_finding(vuln) or 1
+                    raw_line_num = extract_line_number_from_finding(vuln)
                     
-                    # Only include vulnerabilities on changed lines
-                    if line_num not in diff_lines:
+                    # Snap to nearest valid diff line
+                    line_num = snap_to_nearest_diff_line(raw_line_num, diff_lines, max_distance=5)
+                    
+                    if line_num is None:
                         continue
                     
                     finding = BugFinding(
