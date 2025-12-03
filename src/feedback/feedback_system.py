@@ -5,6 +5,8 @@ This module implements:
 2. Syncing GitHub reactions (thumbs up/down)
 3. Filtering new comments based on past feedback
 4. Learning from user explanations
+
+Embeddings: Uses free sentence-transformers (local) - no API key needed!
 """
 import os
 import logging
@@ -22,13 +24,13 @@ except ImportError:
     create_client = None
     Client = None
 
-# Try to import openai
+# Try to import sentence-transformers (FREE, local embeddings - no API key!)
 try:
-    import openai
-    OPENAI_AVAILABLE = True
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
-    openai = None
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    SentenceTransformer = None
 
 logger = logging.getLogger(__name__)
 
@@ -61,36 +63,51 @@ class FeedbackSystem:
             logger.error(f"Failed to initialize Supabase client: {e}")
             self.client = None
         
-        # OpenAI for embeddings
-        if OPENAI_AVAILABLE and openai:
-            openai.api_key = os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY")
+        # Initialize embedding model (FREE - runs locally!)
+        self.embedding_model = None
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                # Use all-MiniLM-L6-v2: fast, good quality, 384 dimensions
+                # Other options: all-mpnet-base-v2 (better but slower)
+                self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+                logger.info("Loaded sentence-transformers model for FREE local embeddings")
+            except Exception as e:
+                logger.warning(f"Could not load embedding model: {e}")
+                self.embedding_model = None
+        else:
+            logger.warning(
+                "sentence-transformers not installed. Run: pip install sentence-transformers\n"
+                "Embeddings will be disabled (feedback filtering won't use similarity)."
+            )
     
     def get_embedding(self, text: str) -> Optional[List[float]]:
-        """Generate embedding for text using OpenAI.
+        """Generate embedding for text using sentence-transformers (FREE, local).
+        
+        Uses all-MiniLM-L6-v2 model which produces 384-dimensional embeddings.
+        No API key required - runs entirely locally!
         
         Args:
             text: Text to embed
             
         Returns:
-            List of floats (embedding vector) or None on error
+            List of floats (embedding vector) or None if unavailable
         """
         if not self.enabled:
             return None
         
-        if not OPENAI_AVAILABLE or not openai:
+        if not self.embedding_model:
             return None
         
         try:
-            # Use OpenAI if available, otherwise skip embeddings
-            if os.getenv("OPENAI_API_KEY"):
-                response = openai.embeddings.create(
-                    model="text-embedding-ada-002",
-                    input=text[:8000]  # Limit to 8K chars
-                )
-                return response.data[0].embedding
-            else:
-                logger.warning("OpenAI API key not found. Embeddings disabled.")
-                return None
+            # Truncate text to reasonable length (model handles up to 256 tokens well)
+            truncated_text = text[:2000]
+            
+            # Generate embedding locally - completely free!
+            embedding = self.embedding_model.encode(truncated_text, convert_to_numpy=True)
+            
+            # Convert to list for JSON serialization
+            return embedding.tolist()
+            
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             return None
