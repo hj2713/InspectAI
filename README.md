@@ -572,36 +572,130 @@ Breaking changes could affect multiple parts of the codebase.
 
 ## 🎓 Feedback Learning System
 
-### How It Works
-
-InspectAI learns from your team's reactions to improve future reviews:
+### Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        Feedback Learning Flow                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  1. InspectAI posts review comment                                         │
-│                    │                                                        │
-│                    ▼                                                        │
-│  2. Developer reacts: 👍 (helpful) or 👎 (not helpful)                     │
-│                    │                                                        │
-│                    ▼                                                        │
-│  3. Reaction synced to Supabase with embedding                             │
-│                    │                                                        │
-│                    ▼                                                        │
-│  4. Future reviews query similar past comments                             │
-│                    │                                                        │
-│         ┌─────────┴─────────┐                                              │
-│         │                   │                                              │
-│  Many 👍 on similar    Many 👎 on similar                                  │
-│         │                   │                                              │
-│         ▼                   ▼                                              │
-│  BOOST confidence     FILTER OUT                                           │
-│  (×1.2 multiplier)    (remove from results)                               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           FEEDBACK LIFECYCLE                                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+1️⃣ COMMENT GENERATION                    2️⃣ STORAGE                    3️⃣ USER FEEDBACK
+┌──────────────────┐                    ┌──────────────────┐          ┌──────────────────┐
+│ LLM generates    │                    │ Store comment    │          │ User reacts 👍/👎 │
+│ review comments  │──── POST ─────────▶│ in Supabase      │◀─────────│ or replies       │
+│ for PR           │     to GitHub      │ with embedding   │          │ to comment       │
+└──────────────────┘                    └──────────────────┘          └──────────────────┘
+                                               │                              │
+                                               ▼                              ▼
+4️⃣ FILTERING (Future PRs)              ┌──────────────────┐          ┌──────────────────┐
+┌──────────────────┐                    │ review_comments  │          │ comment_feedback │
+│ Before posting   │◀── Similar? ──────│ table            │◀─────────│ table            │
+│ new comments:    │    Query by        │ (embeddings)     │  Link    │ (reactions)      │
+│ Check if similar │    embedding       └──────────────────┘          └──────────────────┘
+│ were 👎          │
+└──────────────────┘
+        │
+        ▼
+┌──────────────────┐
+│ If similar had   │
+│ 👎 > 👍: SKIP    │
+│ If 👍 > 👎: BOOST│
+└──────────────────┘
 ```
+
+### When Is Feedback Saved?
+
+| Trigger | What Happens | Data Stored |
+|---------|--------------|-------------|
+| **After posting review** | `store_comment()` called | Comment text, embedding, category, severity |
+| **User reacts (👍/👎)** | `sync_github_reactions()` | Reaction type linked to comment |
+| **User replies to comment** | `store_written_feedback()` | Reply text + inferred sentiment |
+
+### What Gets Stored
+
+#### Table: `review_comments` (Every comment we post)
+
+| Column | Example | Purpose |
+|--------|---------|---------|
+| `repo_full_name` | `"owner/repo"` | **Repo isolation** - keeps data separate |
+| `pr_number` | `123` | Track which PR |
+| `file_path` | `"src/utils.py"` | Where comment was posted |
+| `line_number` | `42` | Specific line |
+| `comment_body` | Full text | For similarity search |
+| `category` | `"Logic Error"` | Issue classification |
+| `severity` | `"high"` | Criticality |
+| `embedding` | 384-dim vector | For similarity matching |
+| `command_type` | `"review"` | Which command generated it |
+
+#### Table: `comment_feedback` (User reactions)
+
+| Column | Example | Purpose |
+|--------|---------|---------|
+| `comment_id` | UUID link | Links to parent comment |
+| `user_login` | `"octocat"` | Who reacted |
+| `reaction_type` | `"thumbs_down"` | The reaction |
+| `explanation` | `"This is intentional"` | Written feedback from replies |
+
+### How Filtering Works
+
+Before posting NEW comments, we check if similar comments were disliked:
+
+```python
+# webhooks.py - Called before posting any review
+filtered_comments = await feedback_system.filter_by_feedback(all_comments, repo_full_name)
+```
+
+**The Algorithm:**
+```
+For each new comment:
+  1. Generate embedding for comment text (sentence-transformers, FREE)
+  2. Search Supabase for similar past comments (cosine similarity > 85%)
+  3. Query is FILTERED BY repo_full_name (repo-specific learning!)
+  4. Count thumbs_up and thumbs_down on similar comments
+  
+  Decision:
+  ┌─────────────────────────────────────────────────────────┐
+  │ If thumbs_down > thumbs_up AND thumbs_down >= 2:       │
+  │     → FILTER OUT (don't post this comment)             │
+  │                                                         │
+  │ If thumbs_up > thumbs_down AND thumbs_up >= 2:         │
+  │     → BOOST confidence (multiply by 1.2)               │
+  │                                                         │
+  │ Otherwise:                                              │
+  │     → Post as normal                                    │
+  └─────────────────────────────────────────────────────────┘
+```
+
+### Repository Isolation
+
+**Each repository's feedback is kept separate:**
+
+```sql
+-- All queries filter by repo_full_name
+SELECT * FROM review_comments 
+WHERE repo_full_name = 'owner/repo'  -- ✅ Isolated per repo
+
+-- Similarity search also filters:
+match_similar_comments(
+    query_embedding,
+    repo_filter := 'owner/repo'  -- Only this repo's history
+)
+```
+
+**Why?** Different repos have different coding styles, false positive patterns, and team preferences.
+
+### Feedback vs Prompt Injection
+
+| Approach | How It Works | InspectAI Uses |
+|----------|--------------|----------------|
+| **Prompt Injection** | Add "avoid X" to LLM prompts | ❌ Not used |
+| **Post-Generation Filter** | Generate → Filter by feedback → Post | ✅ Used |
+
+**Why filtering over prompts?**
+- Simpler - no complex prompt engineering
+- Precise - uses actual embeddings for similarity
+- Measurable - we track filter stats
+- Consistent - avoids LLM inconsistency
 
 ### Database Schema (Supabase)
 
