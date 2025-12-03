@@ -5,6 +5,7 @@ specific aspects of code (e.g., naming, security, bugs). Each sub-agent returns
 structured findings with confidence scores and evidence.
 
 Enhanced with structured prompt support for better LLM output quality.
+Now integrates with PromptBuilder and LANGUAGE_INSTRUCTIONS for language-specific rules.
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
@@ -15,6 +16,15 @@ import re
 
 # Set up logger for specialized agents
 logger = logging.getLogger(__name__)
+
+# Import language-specific instructions from PromptBuilder
+try:
+    from ..prompts.prompt_builder import LANGUAGE_INSTRUCTIONS
+    LANGUAGE_RULES_AVAILABLE = True
+except ImportError:
+    logger.warning("Could not import LANGUAGE_INSTRUCTIONS from prompt_builder")
+    LANGUAGE_INSTRUCTIONS = {}
+    LANGUAGE_RULES_AVAILABLE = False
 
 
 @dataclass
@@ -383,15 +393,30 @@ Return ONLY valid JSON, no markdown or explanations.""")
         return "\n\n".join(sections)
     
     def _get_analysis_instructions(self, analysis_type: str, language: str) -> str:
-        """Get analysis instructions based on type.
+        """Get analysis instructions based on type and language-specific rules.
+        
+        Now integrates with LANGUAGE_INSTRUCTIONS from PromptBuilder for
+        detailed, language-specific code review rules.
         
         Args:
             analysis_type: Type of analysis
             language: Programming language
             
         Returns:
-            Instruction text
+            Instruction text with language-specific rules
         """
+        # Get language-specific rules from PromptBuilder
+        lang_key = language.lower() if language.lower() in LANGUAGE_INSTRUCTIONS else "default"
+        lang_rules = LANGUAGE_INSTRUCTIONS.get(lang_key, [])
+        
+        # Format language-specific rules for prompt
+        lang_rules_text = ""
+        if lang_rules and LANGUAGE_RULES_AVAILABLE:
+            relevant_rules = self._filter_rules_by_analysis_type(lang_rules, analysis_type)
+            if relevant_rules:
+                lang_rules_text = "\n\n### Language-Specific Rules for " + language.capitalize() + ":\n"
+                lang_rules_text += "\n".join(f"- {rule}" for rule in relevant_rules[:10])
+        
         base_instructions = {
             "logic_errors": f"""You are an expert at finding logic errors in {language} code.
 
@@ -403,6 +428,7 @@ Focus on:
 5. Inverted or wrong conditions
 6. Division by zero risks
 7. Integer overflow/underflow
+{lang_rules_text}
 
 Only report ACTUAL logic errors that would cause incorrect behavior.""",
 
@@ -414,6 +440,7 @@ Focus on:
 3. Boundary conditions (first/last element, max/min values)
 4. Type mismatches and implicit conversions
 5. Missing input validation
+{lang_rules_text}
 
 Only report edge cases that could cause runtime errors or incorrect behavior.""",
 
@@ -425,6 +452,7 @@ Focus on:
 3. Missing type checks
 4. Wrong return types
 5. Attribute/method access on wrong types
+{lang_rules_text}
 
 Only report issues that would cause TypeError or similar runtime errors.""",
 
@@ -436,6 +464,7 @@ Focus on:
 3. Deadlocks and race conditions
 4. Performance problems (N+1 queries, inefficient algorithms)
 5. Unhandled exceptions
+{lang_rules_text}
 
 Only report issues that would cause runtime failures or severe performance degradation.""",
 
@@ -450,8 +479,43 @@ Focus on:
 6. Authentication/authorization flaws
 7. Insecure deserialization
 8. SSRF vulnerabilities
+{lang_rules_text}
 
 Only report EXPLOITABLE security vulnerabilities."""
         }
         
         return base_instructions.get(analysis_type, base_instructions["logic_errors"])
+    
+    def _filter_rules_by_analysis_type(self, rules: List[str], analysis_type: str) -> List[str]:
+        """Filter language rules to only those relevant to the analysis type.
+        
+        Args:
+            rules: List of language-specific rules
+            analysis_type: Type of analysis (logic_errors, security, etc.)
+            
+        Returns:
+            Filtered list of relevant rules
+        """
+        if not rules:
+            return []
+        
+        # Keywords that indicate relevance to each analysis type
+        type_keywords = {
+            "logic_errors": ["logic", "condition", "loop", "comparison", "boolean", "off-by-one", "range", "index"],
+            "edge_cases": ["null", "none", "undefined", "empty", "boundary", "default", "optional", "check"],
+            "type_errors": ["type", "coercion", "conversion", "cast", "any", "assertion", "typeof", "instanceof"],
+            "runtime_issues": ["resource", "leak", "close", "memory", "concurrent", "thread", "exception", "error"],
+            "security": ["injection", "xss", "sql", "credential", "secret", "auth", "sanitize", "escape", "validate"]
+        }
+        
+        keywords = type_keywords.get(analysis_type, [])
+        if not keywords:
+            return rules[:5]  # Return first 5 if no keywords match
+        
+        filtered = []
+        for rule in rules:
+            rule_lower = rule.lower()
+            if any(kw in rule_lower for kw in keywords):
+                filtered.append(rule)
+        
+        return filtered if filtered else rules[:5]

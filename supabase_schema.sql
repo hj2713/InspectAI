@@ -101,6 +101,57 @@ BEGIN
 END;
 $$;
 
+-- Table 4: Vector Documents (for code indexing, replaces ChromaDB)
+CREATE TABLE IF NOT EXISTS vector_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    repo_id TEXT NOT NULL,
+    doc_type TEXT DEFAULT 'general',
+    embedding VECTOR(1536),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for vector_documents
+CREATE INDEX IF NOT EXISTS idx_vector_documents_repo ON vector_documents (repo_id);
+CREATE INDEX IF NOT EXISTS idx_vector_documents_type ON vector_documents (doc_type);
+CREATE INDEX IF NOT EXISTS idx_vector_documents_created ON vector_documents (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vector_documents_embedding ON vector_documents 
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+-- Function: Match vector documents by similarity
+CREATE OR REPLACE FUNCTION match_vector_documents(
+    query_embedding VECTOR(1536),
+    match_threshold FLOAT DEFAULT 0.7,
+    match_count INT DEFAULT 5,
+    repo_filter TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    content TEXT,
+    metadata JSONB,
+    similarity FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        vd.id,
+        vd.content,
+        vd.metadata,
+        1 - (vd.embedding <=> query_embedding) AS similarity
+    FROM vector_documents vd
+    WHERE 
+        (repo_filter IS NULL OR vd.repo_id = repo_filter)
+        AND vd.embedding IS NOT NULL
+        AND 1 - (vd.embedding <=> query_embedding) > match_threshold
+    ORDER BY vd.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$;
+
 -- Function: Get feedback summary for a comment
 CREATE OR REPLACE FUNCTION get_comment_feedback_summary(comment_uuid UUID)
 RETURNS TABLE (
@@ -145,3 +196,4 @@ $$;
 -- FROM review_comments rc
 -- LEFT JOIN comment_feedback cf ON rc.id = cf.comment_id
 -- GROUP BY repo_full_name;
+

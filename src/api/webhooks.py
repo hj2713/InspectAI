@@ -9,6 +9,9 @@ Commands:
 - /inspectai_review: Reviews ONLY the changed lines in the PR diff
 - /inspectai_bugs: Finds bugs in WHOLE files that have changes
 - /inspectai_refactor: Code improvement suggestions (style, performance, etc.)
+- /inspectai_security: Security vulnerability scan using 4 specialized sub-agents
+- /inspectai_tests: Generate unit tests for changed code
+- /inspectai_docs: Generate/update documentation for changed code
 
 Setup:
 1. Create a GitHub App at https://github.com/settings/apps
@@ -443,6 +446,21 @@ async def handle_agent_command(
                 )
             elif command == "refactor":
                 return await _handle_refactor_command(
+                    github_client, orchestrator, pr_memory,
+                    repo_full_name, pr_number, pr, comment_author
+                )
+            elif command == "security":
+                return await _handle_security_command(
+                    github_client, orchestrator, pr_memory,
+                    repo_full_name, pr_number, pr, comment_author
+                )
+            elif command == "tests":
+                return await _handle_tests_command(
+                    github_client, orchestrator, pr_memory,
+                    repo_full_name, pr_number, pr, comment_author
+                )
+            elif command == "docs":
+                return await _handle_docs_command(
                     github_client, orchestrator, pr_memory,
                     repo_full_name, pr_number, pr, comment_author
                 )
@@ -974,6 +992,28 @@ I couldn't scan any files in this PR due to technical errors. This might be beca
         github_client.post_pr_comment(repo_full_name, pr_number, error_message)
         return {"status": "error", "message": "All files failed to scan"}
     
+    # Apply feedback filtering to bug findings
+    feedback_system = get_feedback_system()
+    if inline_comments:
+        # Convert to format expected by feedback system
+        comments_for_feedback = [
+            {
+                "description": c.get("body", ""),
+                "category": "Bug Detection",
+                "severity": "medium",
+                "confidence": 0.7
+            }
+            for c in inline_comments
+        ]
+        filtered_comments_data = await feedback_system.filter_by_feedback(comments_for_feedback, repo_full_name)
+        
+        # Filter inline_comments based on feedback results
+        filtered_count = len(inline_comments) - len(filtered_comments_data)
+        if filtered_count > 0:
+            logger.info(f"[BUGS] Feedback system filtered {filtered_count} comments based on past reactions")
+            # Keep comments that passed filter (by index)
+            inline_comments = inline_comments[:len(filtered_comments_data)]
+    
     if inline_comments:
         # Merge comments on the same line
         merged_comments = _merge_inline_comments(inline_comments)
@@ -985,6 +1025,23 @@ I couldn't scan any files in this PR due to technical errors. This might be beca
                 event="COMMENT",
                 comments=merged_comments[:50]  # GitHub limits to 50 comments per review
             )
+            
+            # Store comments for future feedback learning
+            for comment in merged_comments[:50]:
+                try:
+                    await feedback_system.store_comment(
+                        repo_full_name=repo_full_name,
+                        pr_number=pr_number,
+                        file_path=comment.get("path", ""),
+                        line_number=comment.get("line", 0),
+                        comment_body=comment.get("body", ""),
+                        category="Bug Detection",
+                        severity="medium",
+                        command_type="bugs"
+                    )
+                except Exception as e:
+                    logger.debug(f"[BUGS] Failed to store comment for feedback: {e}")
+            
             return {"status": "success", "bugs_found": len(all_bugs), "comments": len(merged_comments)}
         except Exception as e:
             logger.error(f"[BUGS] Failed to post review: {e}")
@@ -1126,6 +1183,27 @@ I couldn't analyze any files in this PR. This might be due to:
         github_client.post_pr_comment(repo_full_name, pr_number, error_message)
         return {"status": "error", "message": "All files failed to analyze"}
     
+    # Apply feedback filtering to refactor suggestions
+    feedback_system = get_feedback_system()
+    if inline_comments:
+        # Convert to format expected by feedback system
+        comments_for_feedback = [
+            {
+                "description": c.get("body", ""),
+                "category": "Refactor",
+                "severity": "low",
+                "confidence": 0.6
+            }
+            for c in inline_comments
+        ]
+        filtered_comments_data = await feedback_system.filter_by_feedback(comments_for_feedback, repo_full_name)
+        
+        # Filter inline_comments based on feedback results
+        filtered_count = len(inline_comments) - len(filtered_comments_data)
+        if filtered_count > 0:
+            logger.info(f"[REFACTOR] Feedback system filtered {filtered_count} comments based on past reactions")
+            inline_comments = inline_comments[:len(filtered_comments_data)]
+    
     if inline_comments:
         # Merge comments on the same line
         merged_comments = _merge_inline_comments(inline_comments)
@@ -1137,6 +1215,23 @@ I couldn't analyze any files in this PR. This might be due to:
                 event="COMMENT",
                 comments=merged_comments[:50]
             )
+            
+            # Store comments for future feedback learning
+            for comment in merged_comments[:50]:
+                try:
+                    await feedback_system.store_comment(
+                        repo_full_name=repo_full_name,
+                        pr_number=pr_number,
+                        file_path=comment.get("path", ""),
+                        line_number=comment.get("line", 0),
+                        comment_body=comment.get("body", ""),
+                        category="Refactor",
+                        severity="low",
+                        command_type="refactor"
+                    )
+                except Exception as e:
+                    logger.debug(f"[REFACTOR] Failed to store comment for feedback: {e}")
+            
             return {"status": "success", "suggestions": len(all_suggestions)}
         except Exception as e:
             logger.error(f"[REFACTOR] Failed to post review: {e}")
@@ -1145,6 +1240,416 @@ I couldn't analyze any files in this PR. This might be due to:
     else:
         github_client.post_pr_comment(repo_full_name, pr_number, summary)
         return {"status": "success", "suggestions": 0}
+
+
+async def _handle_security_command(
+    github_client: GitHubClient,
+    orchestrator,
+    pr_memory,
+    repo_full_name: str,
+    pr_number: int,
+    pr,
+    comment_author: str
+) -> Dict[str, Any]:
+    """Handle /inspectai_security - Security vulnerability scan.
+    
+    Uses 4 specialized security sub-agents:
+    - InjectionScanner: SQL/command injection
+    - AuthScanner: Authentication/authorization flaws
+    - DataExposureScanner: Hardcoded secrets, sensitive data
+    - DependencyScanner: Unsafe dependencies
+    """
+    logger.info(f"[SECURITY] Starting security scan for {repo_full_name}#{pr_number}")
+    
+    all_vulnerabilities = []
+    inline_comments = []
+    files_scanned = 0
+    files_failed = 0
+    
+    # Build diff lines map
+    diff_lines_by_file: Dict[str, set] = {}
+    for pr_file in pr.files:
+        if hasattr(pr_file, 'patch') and pr_file.patch:
+            diff_lines_by_file[pr_file.filename] = get_diff_lines_for_file(pr_file.patch)
+        else:
+            diff_lines_by_file[pr_file.filename] = set()
+    
+    for pr_file in pr.files:
+        if pr_file.status == "removed":
+            continue
+        
+        if not orchestrator._is_code_file(pr_file.filename):
+            continue
+        
+        try:
+            content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
+            diff_patch = pr_file.patch if hasattr(pr_file, 'patch') else ""
+            diff_lines = diff_lines_by_file.get(pr_file.filename, set())
+            
+            if not diff_lines:
+                continue
+            
+            logger.info(f"[SECURITY] Scanning {pr_file.filename} - {len(diff_lines)} changed lines")
+            
+            # Build security-focused context
+            security_context = f"""
+=== SECURITY VULNERABILITY SCAN ===
+
+File: {pr_file.filename}
+Changed lines: {sorted(diff_lines)}
+
+Diff:
+```diff
+{diff_patch}
+```
+
+Focus on security vulnerabilities introduced by changes:
+- SQL/NoSQL Injection
+- Command Injection
+- XSS vulnerabilities
+- Hardcoded secrets/credentials
+- Authentication bypasses
+- Path traversal
+- Insecure deserialization
+- SSRF vulnerabilities
+
+ONLY report vulnerabilities in the changed code (lines {sorted(diff_lines)}).
+"""
+            
+            # Run security scan
+            security_result = orchestrator._safe_execute_agent("security", (content, security_context))
+            
+            if security_result.get("status") == "error":
+                logger.warning(f"[SECURITY] Scan failed for {pr_file.filename}: {security_result.get('error_message')}")
+                files_failed += 1
+                continue
+            
+            logger.info(f"[SECURITY] Found {security_result.get('vulnerability_count', 0)} vulnerabilities")
+            
+            # Process vulnerabilities
+            for vuln in security_result.get("vulnerabilities", []):
+                if isinstance(vuln, dict):
+                    line_num = extract_line_number_from_finding(vuln) or 1
+                    
+                    # Only include vulnerabilities on changed lines
+                    if line_num not in diff_lines:
+                        continue
+                    
+                    finding = BugFinding(
+                        file_path=pr_file.filename,
+                        line_number=line_num,
+                        category=f"🔒 {vuln.get('category', 'Security')}",
+                        severity=vuln.get("severity", "high"),
+                        description=vuln.get("description", ""),
+                        fix_suggestion=vuln.get("remediation") or vuln.get("fix_suggestion") or vuln.get("fix", ""),
+                        confidence=vuln.get("confidence", 0.7),
+                        code_snippet=_extract_code_snippet(content, line_num)
+                    )
+                    all_vulnerabilities.append(finding)
+                    
+                    inline_comments.append({
+                        "path": pr_file.filename,
+                        "line": line_num,
+                        "side": "RIGHT",
+                        "body": _format_security_comment(finding),
+                        "category": vuln.get("category", "Security"),
+                        "severity": vuln.get("severity", "high")
+                    })
+            
+            files_scanned += 1
+            
+        except Exception as e:
+            logger.error(f"[SECURITY] Failed to scan {pr_file.filename}: {e}", exc_info=True)
+            files_failed += 1
+            continue
+    
+    # Calculate risk score
+    risk_score = _calculate_security_risk_score(all_vulnerabilities)
+    risk_emoji = "🔴" if risk_score >= 7 else "🟠" if risk_score >= 4 else "🟢"
+    
+    # Build severity summary
+    severity_counts = {}
+    for vuln in all_vulnerabilities:
+        severity_counts[vuln.severity] = severity_counts.get(vuln.severity, 0) + 1
+    
+    severity_summary = " | ".join([
+        f"{'🔴' if s == 'critical' else '🟠' if s == 'high' else '🟡' if s == 'medium' else '⚪'} {s.capitalize()}: {c}"
+        for s, c in sorted(severity_counts.items(), key=lambda x: ['critical', 'high', 'medium', 'low'].index(x[0]) if x[0] in ['critical', 'high', 'medium', 'low'] else 4)
+    ])
+    
+    summary = f"""## 🔒 InspectAI Security Scan
+
+**Triggered by:** @{comment_author}
+**Files Scanned:** {files_scanned}
+**Vulnerabilities Found:** {len(all_vulnerabilities)}
+**Risk Score:** {risk_emoji} {risk_score:.1f}/10
+
+{severity_summary if severity_summary else "✅ No security vulnerabilities found in changed code!"}
+
+{f"I've added **{len(inline_comments)} inline comments** on potential security issues." if inline_comments else ""}
+"""
+    
+    if files_failed > 0:
+        summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be scanned.\n"
+    
+    summary += "\n---\n*Use `/inspectai_review` for code review or `/inspectai_bugs` for bug detection.*\n"
+    
+    # Apply feedback filtering
+    feedback_system = get_feedback_system()
+    if inline_comments:
+        comments_for_feedback = [{"description": c.get("body", ""), "category": "Security", "severity": c.get("severity", "high"), "confidence": 0.8} for c in inline_comments]
+        filtered_comments_data = await feedback_system.filter_by_feedback(comments_for_feedback, repo_full_name)
+        filtered_count = len(inline_comments) - len(filtered_comments_data)
+        if filtered_count > 0:
+            logger.info(f"[SECURITY] Feedback filtered {filtered_count} comments")
+            inline_comments = inline_comments[:len(filtered_comments_data)]
+    
+    if inline_comments:
+        merged_comments = _merge_inline_comments(inline_comments)
+        try:
+            github_client.create_review(
+                repo_url=repo_full_name,
+                pr_number=pr_number,
+                body=summary,
+                event="COMMENT",
+                comments=merged_comments[:50]
+            )
+            
+            # Store for feedback learning
+            for comment in merged_comments[:50]:
+                try:
+                    await feedback_system.store_comment(
+                        repo_full_name=repo_full_name,
+                        pr_number=pr_number,
+                        file_path=comment.get("path", ""),
+                        line_number=comment.get("line", 0),
+                        comment_body=comment.get("body", ""),
+                        category="Security",
+                        severity=comment.get("severity", "high"),
+                        command_type="security"
+                    )
+                except Exception as e:
+                    logger.debug(f"[SECURITY] Failed to store comment for feedback: {e}")
+            
+            return {"status": "success", "vulnerabilities_found": len(all_vulnerabilities), "risk_score": risk_score}
+        except Exception as e:
+            logger.error(f"[SECURITY] Failed to post review: {e}")
+            github_client.post_pr_comment(repo_full_name, pr_number, summary)
+            return {"status": "partial", "vulnerabilities_found": len(all_vulnerabilities), "error": str(e)}
+    else:
+        github_client.post_pr_comment(repo_full_name, pr_number, summary)
+        return {"status": "success", "vulnerabilities_found": 0, "risk_score": 0}
+
+
+async def _handle_tests_command(
+    github_client: GitHubClient,
+    orchestrator,
+    pr_memory,
+    repo_full_name: str,
+    pr_number: int,
+    pr,
+    comment_author: str
+) -> Dict[str, Any]:
+    """Handle /inspectai_tests - Generate unit tests for changed code.
+    
+    Uses TestGenerationAgent to create pytest/unittest tests.
+    """
+    logger.info(f"[TESTS] Starting test generation for {repo_full_name}#{pr_number}")
+    
+    generated_tests = []
+    files_processed = 0
+    files_failed = 0
+    
+    for pr_file in pr.files:
+        if pr_file.status == "removed":
+            continue
+        
+        if not orchestrator._is_code_file(pr_file.filename):
+            continue
+        
+        # Focus on Python files for now
+        if not pr_file.filename.endswith('.py'):
+            continue
+        
+        try:
+            content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
+            diff_patch = pr_file.patch if hasattr(pr_file, 'patch') else ""
+            
+            logger.info(f"[TESTS] Generating tests for {pr_file.filename}")
+            
+            # Run test generation
+            test_result = orchestrator._safe_execute_agent("test_generation", {
+                "code": content,
+                "framework": "pytest",
+                "coverage_focus": ["happy_path", "edge_cases", "error_handling"],
+                "diff_context": diff_patch
+            })
+            
+            if test_result.get("status") == "error":
+                logger.warning(f"[TESTS] Generation failed for {pr_file.filename}: {test_result.get('error_message')}")
+                files_failed += 1
+                continue
+            
+            test_code = test_result.get("test_code", "")
+            if test_code:
+                generated_tests.append({
+                    "file": pr_file.filename,
+                    "test_file": f"test_{pr_file.filename.split('/')[-1]}",
+                    "test_code": test_code,
+                    "descriptions": test_result.get("test_descriptions", [])
+                })
+            
+            files_processed += 1
+            
+        except Exception as e:
+            logger.error(f"[TESTS] Failed to process {pr_file.filename}: {e}", exc_info=True)
+            files_failed += 1
+            continue
+    
+    # Build summary comment
+    summary = f"""## 🧪 InspectAI Test Generation
+
+**Triggered by:** @{comment_author}
+**Files Processed:** {files_processed}
+**Test Files Generated:** {len(generated_tests)}
+
+"""
+    
+    if generated_tests:
+        summary += "### Generated Tests\n\n"
+        for test in generated_tests:
+            summary += f"<details>\n<summary>📝 <code>{test['test_file']}</code> (for {test['file']})</summary>\n\n"
+            summary += f"```python\n{test['test_code'][:3000]}\n```\n"
+            if len(test['test_code']) > 3000:
+                summary += f"\n*... truncated (full file is {len(test['test_code'])} chars)*\n"
+            summary += "\n</details>\n\n"
+    else:
+        summary += "ℹ️ No tests could be generated. This might be because:\n"
+        summary += "- No Python files were changed\n"
+        summary += "- The changed code doesn't have testable functions\n"
+    
+    if files_failed > 0:
+        summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be processed.\n"
+    
+    summary += "\n---\n*Copy the generated tests to your test directory and run `pytest` to verify.*\n"
+    
+    github_client.post_pr_comment(repo_full_name, pr_number, summary)
+    return {"status": "success", "tests_generated": len(generated_tests)}
+
+
+async def _handle_docs_command(
+    github_client: GitHubClient,
+    orchestrator,
+    pr_memory,
+    repo_full_name: str,
+    pr_number: int,
+    pr,
+    comment_author: str
+) -> Dict[str, Any]:
+    """Handle /inspectai_docs - Generate/update documentation for changed code.
+    
+    Uses DocumentationAgent to create docstrings and documentation.
+    """
+    logger.info(f"[DOCS] Starting documentation generation for {repo_full_name}#{pr_number}")
+    
+    documented_files = []
+    files_processed = 0
+    files_failed = 0
+    
+    for pr_file in pr.files:
+        if pr_file.status == "removed":
+            continue
+        
+        if not orchestrator._is_code_file(pr_file.filename):
+            continue
+        
+        # Focus on Python files for now
+        if not pr_file.filename.endswith('.py'):
+            continue
+        
+        try:
+            content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
+            
+            logger.info(f"[DOCS] Generating docs for {pr_file.filename}")
+            
+            # Run documentation generation
+            doc_result = orchestrator._safe_execute_agent("documentation", {
+                "code": content,
+                "doc_type": "docstring",
+                "style": "google"
+            })
+            
+            if doc_result.get("status") == "error":
+                logger.warning(f"[DOCS] Generation failed for {pr_file.filename}: {doc_result.get('error_message')}")
+                files_failed += 1
+                continue
+            
+            documented_code = doc_result.get("documented_code", "")
+            if documented_code and documented_code != content:
+                documented_files.append({
+                    "file": pr_file.filename,
+                    "original": content,
+                    "documented": documented_code,
+                    "doc_type": "docstring"
+                })
+            
+            files_processed += 1
+            
+        except Exception as e:
+            logger.error(f"[DOCS] Failed to process {pr_file.filename}: {e}", exc_info=True)
+            files_failed += 1
+            continue
+    
+    # Build summary comment
+    summary = f"""## 📚 InspectAI Documentation Generator
+
+**Triggered by:** @{comment_author}
+**Files Processed:** {files_processed}
+**Files with New Documentation:** {len(documented_files)}
+
+"""
+    
+    if documented_files:
+        summary += "### Updated Files with Docstrings\n\n"
+        for doc in documented_files:
+            summary += f"<details>\n<summary>📝 <code>{doc['file']}</code></summary>\n\n"
+            summary += f"```python\n{doc['documented'][:4000]}\n```\n"
+            if len(doc['documented']) > 4000:
+                summary += f"\n*... truncated (full file is {len(doc['documented'])} chars)*\n"
+            summary += "\n</details>\n\n"
+    else:
+        summary += "ℹ️ No documentation updates needed. The changed files either:\n"
+        summary += "- Already have comprehensive docstrings\n"
+        summary += "- Are not Python files (only Python supported currently)\n"
+    
+    if files_failed > 0:
+        summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be processed.\n"
+    
+    summary += "\n---\n*Review the generated docstrings and apply them to your codebase.*\n"
+    
+    github_client.post_pr_comment(repo_full_name, pr_number, summary)
+    return {"status": "success", "files_documented": len(documented_files)}
+
+
+def _format_security_comment(finding: BugFinding) -> str:
+    """Format a security finding as an inline comment."""
+    sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(finding.severity, "⚪")
+    
+    comment = f"{sev_icon} **{finding.category}** ({finding.severity})\n\n{finding.description}"
+    if finding.fix_suggestion:
+        comment += f"\n\n**Remediation:** {finding.fix_suggestion}"
+    return comment
+
+
+def _calculate_security_risk_score(vulnerabilities: List[BugFinding]) -> float:
+    """Calculate security risk score from 0-10."""
+    if not vulnerabilities:
+        return 0.0
+    
+    severity_weights = {"critical": 10.0, "high": 7.0, "medium": 4.0, "low": 1.0}
+    total_score = sum(severity_weights.get(v.severity, 1.0) * v.confidence for v in vulnerabilities)
+    max_score = len(vulnerabilities) * 10
+    return min(10.0, (total_score / max_score) * 10) if max_score > 0 else 0.0
 
 
 def _format_inline_comment(finding: Dict[str, Any]) -> str:
@@ -1311,9 +1816,12 @@ def _format_findings_message(
     message_parts.append("\n---\n")
     message_parts.append("⚡ *Powered by InspectAI*\n\n")
     message_parts.append("💡 **Available Commands:**\n")
-    message_parts.append("- `/inspectai_review` - Review diff changes only\n")
-    message_parts.append("- `/inspectai_bugs` - Scan whole files for bugs\n")
+    message_parts.append("- `/inspectai_review` - Review diff changes with inline comments\n")
+    message_parts.append("- `/inspectai_bugs` - Deep bug detection scan\n")
     message_parts.append("- `/inspectai_refactor` - Code improvement suggestions\n")
+    message_parts.append("- `/inspectai_security` - Security vulnerability scan\n")
+    message_parts.append("- `/inspectai_tests` - Generate unit tests for changes\n")
+    message_parts.append("- `/inspectai_docs` - Generate documentation/docstrings\n")
     
     return "".join(message_parts)
 

@@ -159,7 +159,7 @@ We've curated detailed bug patterns targeting **real mistakes junior developers 
 │  • ThreadPoolExecutor (max 4 workers)                                       │
 │  • Parallel agent coordination                                              │
 │  • Task routing based on command type                                       │
-│  • Vector Store for long-term memory                                        │
+│  • Unified Supabase Vector Store (pgvector)                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
          ┌────────────────────────────┼────────────────────────────┐
@@ -174,6 +174,14 @@ We've curated detailed bug patterns targeting **real mistakes junior developers 
 │                 │         │  • TypeError    │         │                 │
 │                 │         │  • RuntimeIssue │         │                 │
 └─────────────────┘         └─────────────────┘         └─────────────────┘
+         │                            │                            │
+         │              ┌─────────────┼─────────────┐              │
+         │              ▼             ▼             ▼              │
+         │       ┌───────────┐ ┌───────────┐ ┌───────────┐         │
+         │       │ Security  │ │   Test    │ │   Docs    │         │
+         │       │   Agent   │ │ Generator │ │   Agent   │         │
+         │       │ (4 scans) │ │ (pytest)  │ │ (Google)  │         │
+         │       └───────────┘ └───────────┘ └───────────┘         │
          │                            │                            │
          └────────────────────────────┼────────────────────────────┘
                                       │
@@ -244,6 +252,9 @@ Comment these on any Pull Request to trigger InspectAI:
 | `/inspectai_review` | **CodeReviewExpert** | Reviews **only changed lines** in PR diff. Senior developer perspective focusing on bugs, logic errors, security issues in new/modified code. |
 | `/inspectai_bugs` | **BugDetectionAgent** | Deep scan of **entire files** with changes using 4 specialized sub-agents running in parallel. Finds logic errors, edge cases, type errors, runtime issues. |
 | `/inspectai_refactor` | **CodeGenerationAgent** | Code improvement suggestions for changed code. Recommends better patterns, cleaner abstractions, performance optimizations. |
+| `/inspectai_security` | **SecurityAgent** | Security vulnerability scan with 4 specialized scanners: Injection, Auth, Data Exposure, Dependency vulnerabilities. Risk scoring included. |
+| `/inspectai_tests` | **TestGenerationAgent** | Generate unit tests (pytest) for changed Python files. Creates comprehensive test cases with edge cases and error handling. |
+| `/inspectai_docs` | **DocumentationAgent** | Generate/update docstrings and documentation for changed code. Uses Google-style docstrings for Python. |
 | `/inspectai_help` | - | Shows all available commands with descriptions. |
 
 ### How `/inspectai_review` Works (Step-by-Step)
@@ -1236,7 +1247,8 @@ InspectAI/                          # ~40,000+ lines of Python
 │   │
 │   ├── memory/                     # Context management
 │   │   ├── agent_memory.py
-│   │   └── vector_store.py
+│   │   ├── vector_store.py         # Legacy ChromaDB store
+│   │   └── supabase_vector_store.py # Unified Supabase pgvector
 │   │
 │   ├── orchestrator/               # Agent coordination
 │   │   └── orchestrator.py         # Main orchestrator (640 lines)
@@ -1260,6 +1272,7 @@ InspectAI/                          # ~40,000+ lines of Python
 ├── docs/
 │   └── GCP_DEPLOYMENT.md
 │
+├── supabase_schema.sql             # Database schema (review_comments, feedback, vectors)
 ├── Dockerfile
 ├── requirements.txt
 └── README.md                       # This file
