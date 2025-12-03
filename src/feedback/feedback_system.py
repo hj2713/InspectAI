@@ -13,8 +13,22 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import asyncio
 
-from supabase import create_client, Client
-import openai
+# Try to import supabase - graceful fallback if not installed
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    create_client = None
+    Client = None
+
+# Try to import openai
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    openai = None
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +38,32 @@ class FeedbackSystem:
     
     def __init__(self):
         """Initialize Supabase client and OpenAI."""
+        self.enabled = False
+        self.client = None
+        
+        # Check if supabase is available
+        if not SUPABASE_AVAILABLE:
+            logger.warning("supabase-py not installed. Feedback system disabled.")
+            return
+        
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_KEY")
         
         if not supabase_url or not supabase_key:
             logger.warning("Supabase credentials not found. Feedback system disabled.")
-            self.enabled = False
-            self.client = None
             return
         
         try:
-            self.client: Client = create_client(supabase_url, supabase_key)
+            self.client = create_client(supabase_url, supabase_key)
             self.enabled = True
             logger.info("Feedback system initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Supabase client: {e}")
-            self.enabled = False
             self.client = None
         
         # OpenAI for embeddings
-        openai.api_key = os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY")
+        if OPENAI_AVAILABLE and openai:
+            openai.api_key = os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY")
     
     def get_embedding(self, text: str) -> Optional[List[float]]:
         """Generate embedding for text using OpenAI.
@@ -55,6 +75,9 @@ class FeedbackSystem:
             List of floats (embedding vector) or None on error
         """
         if not self.enabled:
+            return None
+        
+        if not OPENAI_AVAILABLE or not openai:
             return None
         
         try:
