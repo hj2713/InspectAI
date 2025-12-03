@@ -183,6 +183,34 @@ def create_app() -> FastAPI:
                     await asyncio.sleep(300)  # Retry after 5 mins on error
 
         asyncio.create_task(cleanup_loop())
+        
+        # Schedule feedback reaction sync (every 5 minutes)
+        async def feedback_sync_loop():
+            from src.feedback.feedback_system import get_feedback_system
+            from src.github.client import GitHubClient
+            
+            feedback_system = get_feedback_system()
+            if not feedback_system.enabled:
+                logger.info("Feedback system disabled - skipping reaction sync")
+                return
+            
+            while True:
+                try:
+                    # Wait for 5 minutes
+                    await asyncio.sleep(300)
+                    
+                    # Get active repos from recent comments (you can track this better with a DB)
+                    # For now, we'll sync all repos from last 7 days
+                    logger.info("Starting feedback reaction sync...")
+                    
+                    # This is a simplified version - in production you'd track active repos
+                    # For now, the sync happens on-demand when reviewing PRs
+                    
+                except Exception as e:
+                    logger.error(f"Error in feedback sync loop: {e}")
+                    await asyncio.sleep(300)  # Retry after 5 mins on error
+        
+        asyncio.create_task(feedback_sync_loop())
     
     @app.get("/health")
     async def health():

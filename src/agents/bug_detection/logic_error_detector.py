@@ -1,7 +1,7 @@
 """Logic Error Detector - Specialized agent for detecting logical bugs.
 
 This agent focuses on off-by-one errors, infinite loops, incorrect algorithms,
-and flawed logic in code.
+and flawed logic in code. Uses structured prompts with few-shot examples.
 """
 from typing import List, Optional
 import logging
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class LogicErrorDetector(SpecializedAgent):
-    """Specialized agent for detecting logic errors."""
+    """Specialized agent for detecting logic errors using structured prompts."""
     
     def initialize(self) -> None:
         """Initialize LLM client for logic error detection."""
@@ -22,11 +22,11 @@ class LogicErrorDetector(SpecializedAgent):
         self.client = get_llm_client_from_config(cfg)
     
     def analyze(self, code: str, context: Optional[str] = None, filename: Optional[str] = None) -> List[Finding]:
-        """Analyze code for logic errors.
+        """Analyze code for logic errors using structured prompts.
         
         Args:
             code: Source code to analyze
-            context: Optional context string for analysis (e.g., related code, problem description)
+            context: Optional context string for analysis
             filename: Optional filename for language detection
             
         Returns:
@@ -34,70 +34,88 @@ class LogicErrorDetector(SpecializedAgent):
         """
         logger.info(f"[LogicErrorDetector] Starting analysis on {len(code)} chars of code")
         
-        language = "code"
-        if filename:
-            if filename.endswith(".py"):
-                language = "Python"
-            elif filename.endswith(".js"):
-                language = "JavaScript"
-            elif filename.endswith(".ts"):
-                language = "TypeScript"
-            elif filename.endswith(".html"):
-                language = "HTML"
+        # Detect language
+        language = self._detect_language(filename)
         
-        system_prompt = {
-            "role": "system",
-            "content": f"""You are an expert at finding logic errors in {language} code. Analyze for logic bugs ONLY.
-
-Focus on:
-1. Off-by-one errors (range issues, indexing)
-2. Infinite loops or incorrect loop conditions
-3. Wrong comparison operators
-4. Incorrect algorithm logic
-5. Inverted conditions
-6. Language-specific logic pitfalls
-
-For EACH logic error found, respond with this EXACT format:
-Category: Logic Error
-Severity: [medium/high/critical]
-Description: [explain the logic bug]
-Location: [line X or function name]
-Fix: [correct logic]
-Confidence: [0.0-1.0]
-
-Only report actual logic errors. If logic appears correct, respond with "No logic errors found."
-"""
-        }
+        # Few-shot examples for logic errors
+        examples = [
+            {
+                "line": 3,
+                "severity": "high",
+                "category": "Off-by-one Error",
+                "description": "Loop iterates one too many times causing IndexError",
+                "fix_suggestion": "Change range(len(items) + 1) to range(len(items))",
+                "confidence": 0.9
+            },
+            {
+                "line": 7,
+                "severity": "medium",
+                "category": "Wrong Comparison",
+                "description": "Using = instead of == in condition causes assignment instead of comparison",
+                "fix_suggestion": "Change 'if x = 5:' to 'if x == 5:'",
+                "confidence": 0.95
+            }
+        ]
         
-        prompt_content = f"Analyze this {language} code for logic errors:\n\n```{language.lower()}\n{code}\n```"
-        if context:
-            prompt_content += f"\n\nAdditional Context (e.g. requirements, related code):\n{context}"
-            
-        user_prompt = {
-            "role": "user",
-            "content": prompt_content
-        }
+        # Build structured prompt
+        structured_prompt = self._build_structured_analysis_prompt(
+            code=code,
+            analysis_type="logic_errors",
+            language=language,
+            context=context,
+            few_shot_examples=examples
+        )
+        
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a logic error detection specialist. Return findings as JSON only."
+            },
+            {
+                "role": "user",
+                "content": structured_prompt
+            }
+        ]
         
         logger.info(f"[LogicErrorDetector] Sending request to LLM")
         
         response = self.client.chat(
-            [system_prompt, user_prompt],
+            messages,
             model=self.config.get("model"),
-            temperature=self.config.get("temperature"),
+            temperature=0.1,  # Very low for precise detection
             max_tokens=self.config.get("max_tokens")
         )
         
         logger.info(f"[LogicErrorDetector] LLM response length: {len(response)}")
-        logger.info(f"[LogicErrorDetector] LLM response preview:\n{response[:500]}")
         
-        # Check if no issues found
+        # Try JSON parsing first
+        json_findings = self._parse_json_response(response)
+        
+        if json_findings:
+            findings = []
+            for jf in json_findings:
+                findings.append(Finding(
+                    category=jf.get("category", "Logic Error"),
+                    severity=jf.get("severity", "medium"),
+                    description=jf.get("description", ""),
+                    fix_suggestion=jf.get("fix_suggestion", ""),
+                    confidence=jf.get("confidence", 0.5),
+                    evidence={"line_number": jf.get("line")},
+                    location=f"line {jf.get('line', '?')}"
+                ))
+            logger.info(f"[LogicErrorDetector] Parsed {len(findings)} findings from JSON")
+            return findings
+        
+        # Fallback to legacy parsing
+        logger.info(f"[LogicErrorDetector] JSON parsing failed, using legacy parser")
+        
         if "no logic errors" in response.lower() or "no errors found" in response.lower():
-            logger.info(f"[LogicErrorDetector] No logic errors found (response contains 'no errors')")
+            logger.info(f"[LogicErrorDetector] No logic errors found")
             return []
         
-        # Parse findings from response
         findings = self._parse_llm_response(response, code)
-        logger.info(f"[LogicErrorDetector] Parsed {len(findings)} findings")
+        logger.info(f"[LogicErrorDetector] Parsed {len(findings)} findings from legacy format")
+        return findings
         
         # Ensure all findings have correct category and severity
         for finding in findings:

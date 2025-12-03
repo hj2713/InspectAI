@@ -35,6 +35,12 @@ from pydantic import BaseModel
 from ..utils.logger import get_logger
 from ..github.client import GitHubClient
 from ..memory.pr_memory import get_pr_memory, BugFinding
+from ..utils.error_handler import (
+    format_error_for_github_comment,
+    format_partial_success_for_github_comment,
+    GracefulErrorHandler
+)
+from ..feedback.feedback_system import get_feedback_system
 
 logger = get_logger(__name__)
 
@@ -438,8 +444,13 @@ IMPORTANT INSTRUCTIONS:
             
             logger.info(f"[REVIEW] Analyzing {len(changed_ranges)} changed regions in {pr_file.filename}")
             
-            # Run analysis with diff context
-            analysis = orchestrator.agents["analysis"].process(diff_context)
+            # Run analysis with diff context - use safe execution
+            analysis = orchestrator._safe_execute_agent("analysis", diff_context)
+            
+            # Check if agent failed
+            if analysis.get("status") == "error":
+                logger.warning(f"[REVIEW] Analysis failed for {pr_file.filename}: {analysis.get('error_message')}")
+                return []  # Return empty instead of crashing
             
             # Create inline comments for findings
             file_comments = []
@@ -462,7 +473,12 @@ IMPORTANT INSTRUCTIONS:
                         "path": pr_file.filename,
                         "line": valid_line,
                         "side": "RIGHT",
-                        "body": comment_body
+                        "body": comment_body,
+                        # Store metadata for feedback system
+                        "category": suggestion.get("category", "Code Review"),
+                        "severity": suggestion.get("severity", "medium"),
+                        "description": suggestion.get("description", ""),
+                        "confidence": suggestion.get("confidence", 0.7)
                     })
             
             # Store review context in memory
@@ -476,11 +492,13 @@ IMPORTANT INSTRUCTIONS:
             
         except Exception as e:
             logger.error(f"[REVIEW] Failed to analyze {pr_file.filename}: {e}", exc_info=True)
+            # Don't crash the pipeline - just skip this file
             return []
     
     # Process files in parallel (max 5 at a time to avoid overwhelming LLM API)
-    inline_comments = []
+    all_comments = []  # Changed from inline_comments
     files_reviewed = 0
+    files_failed = 0
     
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_file = {executor.submit(process_single_file, pr_file): pr_file for pr_file in pr.files}
@@ -490,11 +508,25 @@ IMPORTANT INSTRUCTIONS:
             try:
                 file_comments = future.result()
                 if file_comments:
-                    inline_comments.extend(file_comments)
+                    all_comments.extend(file_comments)
+                    files_reviewed += 1
+                elif orchestrator._is_code_file(pr_file.filename) and pr_file.status != "removed":
+                    # File was processed but no issues found
                     files_reviewed += 1
             except Exception as e:
                 logger.error(f"[REVIEW] Error processing {pr_file.filename}: {e}")
+                files_failed += 1
                 continue
+    
+    # Apply feedback filtering BEFORE posting
+    feedback_system = get_feedback_system()
+    filtered_comments = await feedback_system.filter_by_feedback(all_comments, repo_full_name)
+    
+    # Prepare inline comments for GitHub (remove metadata)
+    inline_comments = [
+        {"path": c["path"], "line": c["line"], "side": c["side"], "body": c["body"]}
+        for c in filtered_comments
+    ]
     
     # Post review with inline comments
     if inline_comments:
@@ -506,10 +538,14 @@ IMPORTANT INSTRUCTIONS:
 
 I've added inline comments on the specific lines that need attention.
 Only the **changed lines** in this PR were reviewed.
-
----
-*Use `/inspectai_bugs` to scan entire files for bugs.*
 """
+        
+        # Add warning if some files failed
+        if files_failed > 0:
+            summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be analyzed due to errors.\n"
+        
+        summary += "\n---\n*Use `/inspectai_bugs` to scan entire files for bugs.*\n"
+        
         # Merge comments on the same line
         merged_comments = _merge_inline_comments(inline_comments)
         try:
@@ -521,13 +557,48 @@ Only the **changed lines** in this PR were reviewed.
                 comments=merged_comments
             )
             logger.info(f"[REVIEW] Posted review with {len(merged_comments)} inline comments")
-            return {"status": "success", "review_id": result.get("id"), "comments": len(merged_comments)}
+            
+            # Store comments in Supabase for feedback learning
+            review_id = result.get("id")
+            for comment_data in filtered_comments:
+                try:
+                    # Get GitHub comment ID from the review
+                    # Note: GitHub doesn't return individual comment IDs in batch review
+                    # We'll sync them later when fetching reactions
+                    await feedback_system.store_comment(
+                        repo_full_name=repo_full_name,
+                        pr_number=pr_number,
+                        file_path=comment_data["path"],
+                        line_number=comment_data["line"],
+                        comment_body=comment_data["body"],
+                        category=comment_data.get("category", "Code Review"),
+                        severity=comment_data.get("severity", "medium"),
+                        github_comment_id=None,  # Will be populated during reaction sync
+                        command_type="review"
+                    )
+                except Exception as e:
+                    logger.error(f"Error storing comment in feedback system: {e}")
+                    # Don't fail the whole review if storage fails
+            
+            # Record filter stats
+            await feedback_system.record_filter_stats(
+                repo_full_name=repo_full_name,
+                pr_number=pr_number,
+                command_type="review",
+                total_generated=len(all_comments),
+                filtered_count=len(all_comments) - len(filtered_comments),
+                boosted_count=sum(1 for c in filtered_comments if c.get("confidence", 0.7) > 0.8)
+            )
+            
+            return {"status": "success", "review_id": review_id, "comments": len(merged_comments)}
         except Exception as e:
             logger.error(f"[REVIEW] Failed to post review: {e}")
-            # Fallback to regular comment
+            # Fallback to regular comment - graceful degradation
             github_client.post_pr_comment(repo_full_name, pr_number, summary)
             return {"status": "partial", "error": str(e), "comments": len(inline_comments)}
-    else:
+    
+    # Check if we reviewed any files at all
+    elif files_reviewed > 0:
         # No issues found
         message = f"""## 🔍 InspectAI Code Review
 
@@ -537,12 +608,40 @@ Only the **changed lines** in this PR were reviewed.
 ✅ **No issues found in the changed lines!**
 
 The diff looks good. Only changed lines were reviewed.
-
----
-*Use `/inspectai_bugs` to do a deeper scan of entire files.*
 """
+        
+        if files_failed > 0:
+            message += f"\n⚠️ **Note:** {files_failed} file(s) could not be analyzed.\n"
+        
+        message += "\n---\n*Use `/inspectai_bugs` to do a deeper scan of entire files.*\n"
+        
         github_client.post_pr_comment(repo_full_name, pr_number, message)
         return {"status": "success", "comments": 0}
+    
+    else:
+        # Complete failure - all files failed to process
+        error_message = f"""## ⚠️ InspectAI Error
+
+**Command:** `/inspectai_review`
+**Triggered by:** @{comment_author}
+
+### What Happened
+I encountered errors while trying to review the files in this PR. This might be due to:
+- Large files taking too long to process
+- Temporary API issues
+- Network connectivity problems
+
+### What You Can Do
+- Try running `/inspectai_review` again in a few minutes
+- Try `/inspectai_bugs` on specific files instead
+- Contact the repository maintainer if the issue persists
+
+---
+*InspectAI is experiencing technical difficulties. Our team has been notified.*
+"""
+        
+        github_client.post_pr_comment(repo_full_name, pr_number, error_message)
+        return {"status": "error", "message": "All files failed to process"}
 
 
 async def _handle_bugs_command(
@@ -563,6 +662,7 @@ async def _handle_bugs_command(
     all_bugs: List[BugFinding] = []
     inline_comments = []
     files_scanned = 0
+    files_failed = 0
     
     # Build a map of which lines are in the diff for each file
     diff_lines_by_file: Dict[str, set] = {}
@@ -612,13 +712,26 @@ Do NOT report:
 Only report ACTUAL BUGS introduced by the changed code.
 """
             
-            # Run bug detection with diff context
-            bugs_result = orchestrator.agents["bug_detection"].process(content, context=diff_context)
+            # Run bug detection with diff context - use safe execution
+            bugs_result = orchestrator._safe_execute_agent("bug_detection", (content, diff_context))
+            
+            # Check if agent failed
+            if bugs_result.get("status") == "error":
+                logger.warning(f"[BUGS] Bug detection failed for {pr_file.filename}: {bugs_result.get('error_message')}")
+                files_failed += 1
+                continue
+            
             logger.info(f"[BUGS] Bug detection returned {bugs_result.get('bug_count', 0)} bugs")
             
-            # Also run security scan with diff context
-            security_result = orchestrator.agents["security"].process(content, context=diff_context)
-            logger.info(f"[BUGS] Security scan returned {security_result.get('vulnerability_count', 0)} vulnerabilities")
+            # Also run security scan with diff context - use safe execution
+            security_result = orchestrator._safe_execute_agent("security", (content, diff_context))
+            
+            # Check if agent failed
+            if security_result.get("status") == "error":
+                logger.warning(f"[BUGS] Security scan failed for {pr_file.filename}: {security_result.get('error_message')}")
+                # Don't increment files_failed again, we already got bug results
+            else:
+                logger.info(f"[BUGS] Security scan returned {security_result.get('vulnerability_count', 0)} vulnerabilities")
             
             # Convert to BugFinding objects - only keep bugs on changed lines
             for bug in bugs_result.get("bugs", []):
@@ -681,6 +794,7 @@ Only report ACTUAL BUGS introduced by the changed code.
             
         except Exception as e:
             logger.error(f"[BUGS] Failed to scan {pr_file.filename}: {e}", exc_info=True)
+            files_failed += 1
             continue
     
     # Build severity summary
@@ -703,6 +817,35 @@ Only report ACTUAL BUGS introduced by the changed code.
 
 {f"I've added **{len(inline_comments)} inline comments** on issues introduced by your changes." if inline_comments else ""}
 """
+    
+    # Add warning if some files failed
+    if files_failed > 0:
+        summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be scanned due to errors.\n"
+    
+    # Check if we scanned any files at all
+    if files_scanned == 0:
+        # Complete failure
+        error_message = f"""## ⚠️ InspectAI Error
+
+**Command:** `/inspectai_bugs`
+**Triggered by:** @{comment_author}
+
+### What Happened
+I couldn't scan any files in this PR due to technical errors. This might be because:
+- The PR contains very large files
+- Temporary API issues
+- Network connectivity problems
+
+### What You Can Do
+- Try running `/inspectai_bugs` again in a few minutes
+- Try `/inspectai_review` for a quicker diff-only review instead
+- Contact the repository maintainer if the issue persists
+
+---
+*InspectAI is experiencing technical difficulties. Our team has been notified.*
+"""
+        github_client.post_pr_comment(repo_full_name, pr_number, error_message)
+        return {"status": "error", "message": "All files failed to scan"}
     
     if inline_comments:
         # Merge comments on the same line
@@ -744,6 +887,7 @@ async def _handle_refactor_command(
     inline_comments = []
     suggestions_not_in_diff = []
     files_analyzed = 0
+    files_failed = 0
     
     # Build a map of which lines are in the diff for each file
     diff_lines_by_file: Dict[str, set] = {}
@@ -766,8 +910,14 @@ async def _handle_refactor_command(
             
             diff_lines = diff_lines_by_file.get(pr_file.filename, set())
             
-            # Run code analysis for refactoring suggestions
-            analysis = orchestrator.agents["analysis"].process(content)
+            # Run code analysis for refactoring suggestions - use safe execution
+            analysis = orchestrator._safe_execute_agent("analysis", content)
+            
+            # Check if agent failed
+            if analysis.get("status") == "error":
+                logger.warning(f"[REFACTOR] Analysis failed for {pr_file.filename}: {analysis.get('error_message')}")
+                files_failed += 1
+                continue
             
             for suggestion in analysis.get("suggestions", []):
                 if isinstance(suggestion, dict):
@@ -794,6 +944,7 @@ async def _handle_refactor_command(
             
         except Exception as e:
             logger.error(f"[REFACTOR] Failed to analyze {pr_file.filename}: {e}", exc_info=True)
+            files_failed += 1
             continue
     
     # Build list of suggestions not in diff
@@ -815,10 +966,38 @@ async def _handle_refactor_command(
 
 {f"I've added **{len(inline_comments)} inline comments** on lines in the diff." if inline_comments else "✅ Code looks clean! No major improvements needed."}
 {suggestions_text}
+"""
+    
+    # Add warning if some files failed
+    if files_failed > 0:
+        summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be analyzed due to errors.\n"
+    
+    summary += "\n---\n*Use `/inspectai_review` for quick code review or `/inspectai_bugs` for deep bug scanning.*\n"
+    
+    # Check if we analyzed any files at all
+    if files_analyzed == 0:
+        # Complete failure
+        error_message = f"""## ⚠️ InspectAI Error
+
+**Command:** `/inspectai_refactor`
+**Triggered by:** @{comment_author}
+
+### What Happened
+I couldn't analyze any files in this PR. This might be due to:
+- Large files causing processing timeouts
+- Temporary API service issues
+- Network connectivity problems
+
+### What You Can Do
+- Try running `/inspectai_refactor` again in a few minutes
+- Try `/inspectai_review` or `/inspectai_bugs` instead
+- Contact the repository maintainer if the issue persists
 
 ---
-*Use `/inspectai_review` for quick code review or `/inspectai_bugs` for deep bug scanning.*
+*InspectAI is experiencing technical difficulties. Our team has been notified.*
 """
+        github_client.post_pr_comment(repo_full_name, pr_number, error_message)
+        return {"status": "error", "message": "All files failed to analyze"}
     
     if inline_comments:
         # Merge comments on the same line

@@ -3,11 +3,15 @@
 This module provides the base class for all specialized sub-agents that analyze
 specific aspects of code (e.g., naming, security, bugs). Each sub-agent returns
 structured findings with confidence scores and evidence.
+
+Enhanced with structured prompt support for better LLM output quality.
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 import logging
+import json
+import re
 
 # Set up logger for specialized agents
 logger = logging.getLogger(__name__)
@@ -236,3 +240,218 @@ class SpecializedAgent(ABC):
     def cleanup(self) -> None:
         """Cleanup resources. Override if needed."""
         pass
+    
+    def _parse_json_response(self, response: str) -> List[Dict[str, Any]]:
+        """Parse JSON response from LLM.
+        
+        Enhanced method for parsing structured JSON output from prompts.
+        
+        Args:
+            response: Raw LLM response
+            
+        Returns:
+            List of finding dictionaries
+        """
+        if not response:
+            return []
+        
+        # Try to extract JSON from response
+        try:
+            # Try direct JSON parse
+            data = json.loads(response)
+            return data.get("findings", [])
+        except json.JSONDecodeError:
+            pass
+        
+        # Try to find JSON block in response
+        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group(1))
+                return data.get("findings", [])
+            except json.JSONDecodeError:
+                pass
+        
+        # Try to find raw JSON object
+        json_match = re.search(r'\{[\s\S]*"findings"[\s\S]*\}', response)
+        if json_match:
+            try:
+                data = json.loads(json_match.group(0))
+                return data.get("findings", [])
+            except json.JSONDecodeError:
+                pass
+        
+        return []
+    
+    def _detect_language(self, filename: Optional[str]) -> str:
+        """Detect language from filename.
+        
+        Args:
+            filename: File path or name
+            
+        Returns:
+            Language name
+        """
+        if not filename:
+            return "code"
+        
+        ext_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'typescript',
+            '.jsx': 'javascript',
+            '.java': 'java',
+            '.go': 'go',
+            '.rb': 'ruby',
+            '.php': 'php',
+            '.rs': 'rust',
+            '.cpp': 'cpp',
+            '.c': 'c',
+            '.cs': 'csharp',
+            '.swift': 'swift',
+            '.kt': 'kotlin'
+        }
+        
+        for ext, lang in ext_map.items():
+            if filename.endswith(ext):
+                return lang
+        
+        return "code"
+    
+    def _build_structured_analysis_prompt(
+        self,
+        code: str,
+        analysis_type: str,
+        language: str,
+        context: Optional[str] = None,
+        few_shot_examples: Optional[List[Dict]] = None
+    ) -> str:
+        """Build a structured prompt for analysis.
+        
+        Args:
+            code: Code to analyze
+            analysis_type: Type of analysis (e.g., "logic_errors", "security")
+            language: Programming language
+            context: Optional additional context
+            few_shot_examples: Optional list of examples
+            
+        Returns:
+            Structured prompt string
+        """
+        sections = []
+        
+        # Instructions based on analysis type
+        instructions = self._get_analysis_instructions(analysis_type, language)
+        sections.append(f"## Instructions\n\n{instructions}")
+        
+        # Code to analyze
+        sections.append(f"## Code to Analyze\n\n```{language}\n{code}\n```")
+        
+        # Additional context
+        if context:
+            sections.append(f"## Additional Context\n\n{context}")
+        
+        # Few-shot examples
+        if few_shot_examples:
+            sections.append("## Examples of Expected Output\n")
+            for i, ex in enumerate(few_shot_examples[:2], 1):
+                sections.append(f"### Example {i}\n```json\n{json.dumps(ex, indent=2)}\n```\n")
+        
+        # Output format
+        sections.append("""## Required Output Format
+
+Return findings as JSON:
+```json
+{
+  "findings": [
+    {
+      "line": <line_number>,
+      "severity": "critical|high|medium|low",
+      "category": "<issue_category>",
+      "description": "<clear description>",
+      "fix_suggestion": "<how to fix>",
+      "confidence": <0.0-1.0>
+    }
+  ]
+}
+```
+
+If no issues found, return: `{"findings": []}`
+Return ONLY valid JSON, no markdown or explanations.""")
+        
+        return "\n\n".join(sections)
+    
+    def _get_analysis_instructions(self, analysis_type: str, language: str) -> str:
+        """Get analysis instructions based on type.
+        
+        Args:
+            analysis_type: Type of analysis
+            language: Programming language
+            
+        Returns:
+            Instruction text
+        """
+        base_instructions = {
+            "logic_errors": f"""You are an expert at finding logic errors in {language} code.
+
+Focus on:
+1. Off-by-one errors in loops and array indexing
+2. Infinite loops or incorrect loop conditions
+3. Wrong comparison operators (< vs <=, == vs ===)
+4. Incorrect algorithm logic
+5. Inverted or wrong conditions
+6. Division by zero risks
+7. Integer overflow/underflow
+
+Only report ACTUAL logic errors that would cause incorrect behavior.""",
+
+            "edge_cases": f"""You are an expert at finding edge case bugs in {language} code.
+
+Focus on:
+1. Null/None/undefined handling
+2. Empty array/string/collection handling
+3. Boundary conditions (first/last element, max/min values)
+4. Type mismatches and implicit conversions
+5. Missing input validation
+
+Only report edge cases that could cause runtime errors or incorrect behavior.""",
+
+            "type_errors": f"""You are an expert at finding type-related bugs in {language} code.
+
+Focus on:
+1. Type mismatches in function calls
+2. Incorrect type conversions
+3. Missing type checks
+4. Wrong return types
+5. Attribute/method access on wrong types
+
+Only report issues that would cause TypeError or similar runtime errors.""",
+
+            "runtime_issues": f"""You are an expert at finding runtime issues in {language} code.
+
+Focus on:
+1. Resource leaks (unclosed files, connections)
+2. Memory issues
+3. Deadlocks and race conditions
+4. Performance problems (N+1 queries, inefficient algorithms)
+5. Unhandled exceptions
+
+Only report issues that would cause runtime failures or severe performance degradation.""",
+
+            "security": f"""You are a security expert analyzing {language} code for vulnerabilities.
+
+Focus on:
+1. SQL/NoSQL injection
+2. Command injection
+3. XSS vulnerabilities
+4. Path traversal
+5. Hardcoded credentials/secrets
+6. Authentication/authorization flaws
+7. Insecure deserialization
+8. SSRF vulnerabilities
+
+Only report EXPLOITABLE security vulnerabilities."""
+        }
+        
+        return base_instructions.get(analysis_type, base_instructions["logic_errors"])
