@@ -281,7 +281,11 @@ class CodebaseIndexer:
         # Map parent names to IDs (for methods)
         parent_map = {}
         
-        # First pass: Index non-methods (classes, functions)
+        # Batch insert for efficiency
+        batch_size = 50
+        
+        # First pass: Collect non-methods (classes, functions)
+        non_method_data = []
         for symbol in symbols:
             if symbol.symbol_type != "method":
                 symbol_data = {
@@ -300,13 +304,24 @@ class CodebaseIndexer:
                     "is_static": symbol.is_static,
                     "is_async": symbol.is_async
                 }
-                
-                result = self.client.table("code_symbols").insert(symbol_data).execute()
-                
-                if result.data and symbol.symbol_type == "class":
-                    parent_map[symbol.name] = result.data[0]["id"]
+                non_method_data.append((symbol, symbol_data))
         
-        # Second pass: Index methods with parent references
+        # Batch insert non-methods
+        for i in range(0, len(non_method_data), batch_size):
+            batch = [data for _, data in non_method_data[i:i+batch_size]]
+            try:
+                result = self.client.table("code_symbols").insert(batch).execute()
+                # Map class names to IDs for method parent references
+                if result.data:
+                    for j, row in enumerate(result.data):
+                        sym, _ = non_method_data[i + j]
+                        if sym.symbol_type == "class":
+                            parent_map[sym.name] = row["id"]
+            except Exception as e:
+                logger.debug(f"Batch insert symbols error: {e}")
+        
+        # Second pass: Collect methods with parent references
+        method_data = []
         for symbol in symbols:
             if symbol.symbol_type == "method":
                 parent_id = parent_map.get(symbol.parent_name) if symbol.parent_name else None
@@ -328,8 +343,15 @@ class CodebaseIndexer:
                     "is_static": symbol.is_static,
                     "is_async": symbol.is_async
                 }
-                
-                self.client.table("code_symbols").insert(symbol_data).execute()
+                method_data.append(symbol_data)
+        
+        # Batch insert methods
+        for i in range(0, len(method_data), batch_size):
+            batch = method_data[i:i+batch_size]
+            try:
+                self.client.table("code_symbols").insert(batch).execute()
+            except Exception as e:
+                logger.debug(f"Batch insert methods error: {e}")
     
     async def _index_imports(
         self,
@@ -341,8 +363,10 @@ class CodebaseIndexer:
         if not imports:
             return
         
+        # Batch insert for efficiency
+        import_data_list = []
         for imp in imports:
-            import_data = {
+            import_data_list.append({
                 "project_id": project_id,
                 "file_id": file_id,
                 "import_statement": imp.statement,
@@ -350,10 +374,17 @@ class CodebaseIndexer:
                 "imported_names": imp.names,
                 "is_relative": imp.is_relative,
                 "line_number": imp.line_number,
-                "is_external": not imp.is_relative  # Simplified - can be improved
-            }
-            
-            self.client.table("code_imports").insert(import_data).execute()
+                "is_external": not imp.is_relative
+            })
+        
+        # Insert in batches of 50
+        batch_size = 50
+        for i in range(0, len(import_data_list), batch_size):
+            batch = import_data_list[i:i+batch_size]
+            try:
+                self.client.table("code_imports").insert(batch).execute()
+            except Exception as e:
+                logger.debug(f"Batch insert imports error: {e}")
     
     async def _index_calls(
         self,
