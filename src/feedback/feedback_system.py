@@ -1,13 +1,4 @@
-"""Feedback System - Customer feedback loop for learning from reactions.
 
-This module implements:
-1. Storing review comments in Supabase with embeddings
-2. Syncing GitHub reactions (thumbs up/down)
-3. Filtering new comments based on past feedback
-4. Learning from user explanations
-
-Embeddings: Uses free sentence-transformers (local) - no API key needed!
-"""
 import os
 import logging
 import hashlib
@@ -16,13 +7,8 @@ from datetime import datetime, timedelta
 import asyncio
 
 # Try to import supabase - graceful fallback if not installed
-try:
-    from supabase import create_client, Client
-    SUPABASE_AVAILABLE = True
-except ImportError:
-    SUPABASE_AVAILABLE = False
-    create_client = None
-    Client = None
+SUPABASE_AVAILABLE = True
+
 
 # Try to import sentence-transformers (FREE, local embeddings - no API key!)
 try:
