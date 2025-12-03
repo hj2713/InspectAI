@@ -438,7 +438,7 @@ async def process_pr_review(
             logger.info(f"PR review completed for {repo_full_name}#{pr_number}")
             
             # Generate PR description on PR open, when commits are pushed, or when PR is reopened
-            if action in ["opened", "synchronize", "reopened"]:
+            if action in ["opened", "synchronize", "reopened"]
                 try:
                     logger.info(f"Generating PR description for {repo_full_name}#{pr_number}")
                     
