@@ -329,6 +329,28 @@ async def process_pr_review(
     logger.info(f"Processing PR review for {repo_full_name}#{pr_number} (action: {action})")
     
     try:
+        # Check rate limit before starting expensive operations
+        try:
+            github_check = GitHubClient.from_installation(installation_id) if installation_id else GitHubClient()
+            rate_status = github_check.get_rate_limit_status()
+            remaining = rate_status.get('remaining', 0)
+            
+            if remaining < 50:  # Need at least 50 API calls for a PR review
+                reset_time = rate_status.get('reset', 0)
+                wait_until = datetime.fromtimestamp(reset_time).strftime('%H:%M:%S') if reset_time else 'unknown'
+                logger.warning(
+                    f"GitHub API rate limit too low ({remaining} remaining). "
+                    f"Skipping PR review for {repo_full_name}#{pr_number}. "
+                    f"Rate limit resets at {wait_until}"
+                )
+                return {
+                    "status": "rate_limited",
+                    "message": f"GitHub API rate limit too low ({remaining} remaining). Will retry after reset.",
+                    "reset_at": reset_time
+                }
+        except Exception as e:
+            logger.warning(f"Could not check rate limit: {e}. Proceeding anyway...")
+        
         # Initialize orchestrator
         config = copy.deepcopy(ORCHESTRATOR_CONFIG)
         from config.default_config import DEFAULT_PROVIDER, GEMINI_MODEL, BYTEZ_MODEL, OPENAI_MODEL
@@ -538,6 +560,10 @@ async def handle_agent_command(
                 return await _handle_docs_command(
                     github_client, orchestrator, pr_memory,
                     repo_full_name, pr_number, pr, comment_author
+                )
+            elif command == "help":
+                return await _handle_help_command(
+                    github_client, repo_full_name, pr_number, comment_author
                 )
             else:
                 return {"status": "error", "error": f"Unknown command: {command}"}
@@ -1706,6 +1732,50 @@ async def _handle_docs_command(
     return {"status": "success", "files_documented": len(documented_files)}
 
 
+async def _handle_help_command(
+    github_client: GitHubClient,
+    repo_full_name: str,
+    pr_number: int,
+    comment_author: str
+) -> Dict[str, Any]:
+    """Handle /inspectai_help - Show available commands."""
+    logger.info(f"[HELP] Showing help for {repo_full_name}#{pr_number}")
+    
+    help_message = f"""## 🤖 InspectAI Commands
+
+**Triggered by:** @{comment_author}
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `/inspectai_review` | **Quick Review** - Reviews ONLY the changed lines in your PR. Posts inline comments on issues introduced by your changes. Fast and focused. |
+| `/inspectai_bugs` | **Deep Bug Scan** - Analyzes entire files (not just diffs) for potential bugs, logic errors, and edge cases. More thorough but slower. |
+| `/inspectai_refactor` | **Refactor Suggestions** - Suggests code improvements for readability, performance, and maintainability. |
+| `/inspectai_security` | **Security Audit** - Scans for security vulnerabilities using 4 specialized sub-agents: Injection, Auth, Data Exposure, Dependencies. |
+| `/inspectai_tests` | **Test Generation** - Generates unit tests for your changed code. |
+| `/inspectai_docs` | **Documentation** - Generates/updates docstrings for changed Python files using Google-style format. |
+| `/inspectai_help` | **Help** - Shows this message. |
+
+### Tips
+
+- 🚀 **Start with** `/inspectai_review` for quick feedback on your changes
+- 🐛 **Use** `/inspectai_bugs` when you want a deeper analysis of edge cases
+- 🔐 **Run** `/inspectai_security` before merging code that handles user input or authentication
+- ✅ **Generate tests** with `/inspectai_tests` to improve coverage
+
+### Feedback
+
+React with 👍 or 👎 on any InspectAI comment to help improve future reviews!
+
+---
+*InspectAI - Your AI Code Review Assistant*
+"""
+    
+    github_client.post_pr_comment(repo_full_name, pr_number, help_message)
+    return {"status": "success", "command": "help"}
+
+
 def _format_security_comment(finding: BugFinding) -> str:
     """Format a security finding as an inline comment."""
     sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(finding.severity, "⚪")
@@ -2076,6 +2146,14 @@ async def github_webhook(
                 command = "bugs"
             elif "/inspectai_refactor" in comment_body:
                 command = "refactor"
+            elif "/inspectai_security" in comment_body:
+                command = "security"
+            elif "/inspectai_tests" in comment_body:
+                command = "tests"
+            elif "/inspectai_docs" in comment_body:
+                command = "docs"
+            elif "/inspectai_help" in comment_body:
+                command = "help"
             
             if command:
                 logger.info(f"/InspectAI_{command} command detected on {repo_full_name}#{pr_number} by {comment_author}")

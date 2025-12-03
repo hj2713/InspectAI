@@ -1,10 +1,12 @@
 """PR Memory Manager - Maintains context across InspectAI commands.
 
-This module uses VectorStore to maintain persistent memory about:
+This module uses the unified VectorStore to maintain persistent memory about:
 - PR analysis history
 - Bug findings that need to be fixed
 - Previous reviews and suggestions
 - Cross-command context
+
+Uses Supabase pgvector as primary storage with ChromaDB fallback.
 
 This enables commands to work together:
 - /inspectai_bugs stores findings
@@ -16,7 +18,7 @@ import time
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 
-from .vector_store import VectorStore
+from .supabase_vector_store import get_vector_store
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -47,20 +49,24 @@ class PRMemoryManager:
     """Manages persistent memory for PR analysis across commands.
     
     Memory is isolated per repository and PR number.
+    Uses Supabase pgvector with ChromaDB fallback.
     """
     
     def __init__(self, persist_path: str = ".chroma_db"):
         """Initialize PR memory manager.
         
         Args:
-            persist_path: Path to store ChromaDB data
+            persist_path: Path for ChromaDB persistence (used as fallback)
         """
         # Always initialize fallback first
         self._memory_fallback: Dict[str, List[Dict]] = {}
         
         try:
-            self.vector_store = VectorStore(persist_path)
-            logger.info("PRMemoryManager initialized with VectorStore")
+            self.vector_store = get_vector_store(persist_path)
+            backend = "Supabase" if self.vector_store.supabase_enabled else (
+                "ChromaDB" if self.vector_store.chromadb_enabled else "in-memory"
+            )
+            logger.info(f"PRMemoryManager initialized with {backend} backend")
         except Exception as e:
             logger.warning(f"VectorStore initialization failed: {e}. Using in-memory fallback.")
             self.vector_store = None

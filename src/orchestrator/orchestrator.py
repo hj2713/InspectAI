@@ -51,11 +51,14 @@ class OrchestratorAgent:
         self.logger = AgentLogger("orchestrator")
         self._executor = ThreadPoolExecutor(max_workers=4)
         
-        # Initialize Vector Store for long-term memory
+        # Initialize Vector Store for long-term memory (Supabase with ChromaDB fallback)
         try:
-            from ..memory.vector_store import VectorStore
-            self.vector_store = VectorStore()
-            logger.info("Vector Store initialized successfully")
+            from ..memory.supabase_vector_store import get_vector_store
+            self.vector_store = get_vector_store()
+            backend = "Supabase" if self.vector_store.supabase_enabled else (
+                "ChromaDB" if self.vector_store.chromadb_enabled else "in-memory"
+            )
+            logger.info(f"Vector Store initialized with {backend} backend")
         except Exception as e:
             logger.warning(f"Failed to initialize Vector Store: {e}. Running without long-term memory.")
             self.vector_store = None
