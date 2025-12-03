@@ -12,18 +12,6 @@
 #      - GITHUB_TOKEN: Personal access token for GitHub API
 #      - OPENAI_API_KEY or BYTEZ_API_KEY: For LLM access
 
-set -e
-
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
-
-# Load environment variables
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-fi
-
-# Default port
-PORT=${PORT:-8000}
 
 echo "=========================================="
 echo "Multi-Agent Code Review - Webhook Server"
