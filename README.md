@@ -1398,28 +1398,9 @@ LLM_PROVIDER=gemini  # or openai, bytez
 
 ---
 
-## 📄 License
-
-MIT License - see LICENSE file
-
----
-
 ## 🙏 Acknowledgments
 
 - **Architecture Inspiration**: [Ellipsis.dev](https://www.ellipsis.dev/blog/how-we-built-ellipsis)
 - **LLM Provider**: [Google Gemini](https://ai.google.dev/)
 - **Deployment**: [Render](https://render.com)
 - **Database**: [Supabase](https://supabase.com)
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/hj2713/InspectAI/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/hj2713/InspectAI/discussions)
-
----
-
-**Made with ❤️ for developers who care about code quality**
-
-*InspectAI - Because every PR deserves a senior developer review*
