@@ -355,6 +355,24 @@ Comment these on any Pull Request to trigger InspectAI:
 | 10 files | 80s | 16s | **5x faster** |
 | 50 files | 400s | 80s | **5x faster** |
 
+### 🔧 Hidden Developer Commands
+
+These commands are **not shown in `/inspectai_help`** - they're for maintainers and debugging:
+
+| Command | Description |
+|---------|-------------|
+| `/inspectai_reindex` | **Manually trigger codebase reindexing** for the current repository. Useful when the weekly scheduled job hasn't run yet or you need immediate indexing after major changes. Runs asynchronously in the background. |
+| `/inspectai_status` | **Show system status** including: repository indexing status, last indexed timestamp, number of indexed files/symbols, scheduler status. Useful for debugging indexing issues. |
+
+#### Automatic Weekly Reindexing
+
+InspectAI automatically reindexes all repositories every **7 days** (configurable via `REINDEX_INTERVAL_DAYS` env var). This ensures:
+- New files are discovered and indexed
+- Deleted files are cleaned up
+- Call graphs stay accurate
+
+If the scheduled job fails, use `/inspectai_reindex` to manually trigger it.
+
 </details>
 
 ---
@@ -595,6 +613,54 @@ InspectAI can index your entire codebase to provide **intelligent impact analysi
 - **Who calls this function?** - Know if a change breaks downstream code
 - **What imports this file?** - Understand dependency relationships  
 - **Risk level assessment** - HIGH/MEDIUM/LOW based on caller count
+
+### Data Storage & Isolation
+
+All indexed data is stored in **Supabase PostgreSQL** with complete isolation per repository:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Supabase Database                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  indexed_projects (1 row per repo)                                  │   │
+│  │  • repo_full_name: "owner/repo" (UNIQUE)                           │   │
+│  │  • installation_id: GitHub App installation                        │   │
+│  │  • indexing_status: pending/indexing/completed/failed              │   │
+│  │  • last_indexed_at: timestamp                                      │   │
+│  │  • total_files, total_symbols: statistics                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                              │
+│                              │ project_id (FK)                              │
+│                              ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  code_files (per project)                                           │   │
+│  │  • file_path, language, content_hash                               │   │
+│  │  • Isolated by: WHERE project_id = ?                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                              │
+│                              │ file_id (FK)                                 │
+│                              ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  code_symbols (functions, classes, methods)                         │   │
+│  │  • symbol_name, symbol_type, signature                             │   │
+│  │  • start_line, end_line, docstring                                 │   │
+│  │  • Isolated by: WHERE project_id = ?                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                              │
+│                              ▼                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  code_calls (function call graph)                                   │   │
+│  │  • caller_symbol_id → callee_name                                  │   │
+│  │  • Used for impact analysis                                        │   │
+│  │  • Isolated by: WHERE project_id = ?                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Point:** Each repository gets its own `project_id`. All queries filter by `project_id`, ensuring **complete data isolation** between different repositories/organizations.
 
 ### Architecture
 

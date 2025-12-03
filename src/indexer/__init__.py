@@ -46,6 +46,10 @@ from .background_indexer import (
     BackgroundIndexer,
     get_background_indexer,
     trigger_repo_indexing,
+    ScheduledReindexer,
+    get_scheduled_reindexer,
+    start_scheduled_reindexing,
+    stop_scheduled_reindexing,
 )
 
 from .context_enricher import (
@@ -73,6 +77,12 @@ __all__ = [
     "BackgroundIndexer",
     "get_background_indexer",
     "trigger_repo_indexing",
+    
+    # Scheduled Reindexer
+    "ScheduledReindexer",
+    "get_scheduled_reindexer",
+    "start_scheduled_reindexing",
+    "stop_scheduled_reindexing",
     
     # Context Enricher
     "ContextEnricher",

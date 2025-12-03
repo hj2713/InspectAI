@@ -487,3 +487,284 @@ async def trigger_repo_indexing(
             installation_id=installation_id,
             commit_sha=commit_sha
         )
+
+
+# ============================================
+# Scheduled Reindexing (Weekly Job)
+# ============================================
+
+class ScheduledReindexer:
+    """Handles scheduled weekly reindexing of all repositories.
+    
+    This ensures the codebase index stays up-to-date even if
+    incremental indexing misses some changes.
+    """
+    
+    def __init__(self):
+        self._scheduler_task: Optional[asyncio.Task] = None
+        self._is_running = False
+        self._last_run: Optional[datetime] = None
+        self._reindex_interval_days = int(os.getenv("REINDEX_INTERVAL_DAYS", "7"))
+        
+        logger.info(f"ScheduledReindexer initialized (interval: {self._reindex_interval_days} days)")
+    
+    async def start_scheduler(self):
+        """Start the background scheduler for weekly reindexing."""
+        if self._scheduler_task and not self._scheduler_task.done():
+            logger.info("Scheduler already running")
+            return
+        
+        self._is_running = True
+        self._scheduler_task = asyncio.create_task(self._run_scheduler())
+        logger.info("Started scheduled reindexing scheduler")
+    
+    async def stop_scheduler(self):
+        """Stop the background scheduler."""
+        self._is_running = False
+        if self._scheduler_task:
+            self._scheduler_task.cancel()
+            try:
+                await self._scheduler_task
+            except asyncio.CancelledError:
+                pass
+        logger.info("Stopped scheduled reindexing scheduler")
+    
+    async def _run_scheduler(self):
+        """Main scheduler loop - checks every hour if reindex is needed."""
+        while self._is_running:
+            try:
+                # Check if it's time to reindex (every week by default)
+                if await self._should_reindex():
+                    logger.info("Starting scheduled weekly reindexing...")
+                    await self.reindex_all_repositories()
+                    self._last_run = datetime.utcnow()
+                
+                # Sleep for 1 hour before checking again
+                await asyncio.sleep(3600)  # 1 hour
+                
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in scheduler loop: {e}")
+                await asyncio.sleep(3600)  # Wait an hour before retrying
+    
+    async def _should_reindex(self) -> bool:
+        """Check if enough time has passed since last reindex."""
+        if self._last_run is None:
+            # Check Supabase for last reindex time
+            try:
+                from .indexer import get_codebase_indexer
+                indexer = get_codebase_indexer()
+                if indexer.client:
+                    # Get the oldest last_indexed_at from all projects
+                    result = indexer.client.table("indexed_projects") \
+                        .select("last_indexed_at") \
+                        .order("last_indexed_at", desc=False) \
+                        .limit(1) \
+                        .execute()
+                    
+                    if result.data and result.data[0].get("last_indexed_at"):
+                        oldest = datetime.fromisoformat(
+                            result.data[0]["last_indexed_at"].replace("Z", "+00:00")
+                        )
+                        days_since = (datetime.utcnow().replace(tzinfo=oldest.tzinfo) - oldest).days
+                        return days_since >= self._reindex_interval_days
+            except Exception as e:
+                logger.warning(f"Could not check last reindex time: {e}")
+            
+            # Default: reindex if we've never run before
+            return True
+        
+        days_since_last_run = (datetime.utcnow() - self._last_run).days
+        return days_since_last_run >= self._reindex_interval_days
+    
+    async def reindex_all_repositories(self) -> Dict[str, Any]:
+        """Reindex all registered repositories.
+        
+        This is the main method for scheduled reindexing.
+        Can also be called manually via the /inspectai_reindex command.
+        
+        Returns:
+            Summary dict with success/failure counts
+        """
+        from .indexer import get_codebase_indexer
+        from ..github.client import GitHubClient
+        
+        indexer = get_codebase_indexer()
+        if not indexer.client:
+            logger.warning("Supabase not configured - cannot reindex")
+            return {"status": "error", "message": "Supabase not configured"}
+        
+        # Get all registered projects
+        try:
+            result = indexer.client.table("indexed_projects") \
+                .select("repo_full_name, installation_id, last_indexed_at") \
+                .execute()
+            
+            projects = result.data or []
+            logger.info(f"Found {len(projects)} repositories to reindex")
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch projects for reindexing: {e}")
+            return {"status": "error", "message": str(e)}
+        
+        # Reindex each repository
+        results = {
+            "total": len(projects),
+            "success": 0,
+            "failed": 0,
+            "skipped": 0,
+            "details": []
+        }
+        
+        background_indexer = get_background_indexer()
+        
+        for project in projects:
+            repo_full_name = project.get("repo_full_name")
+            installation_id = project.get("installation_id")
+            
+            if not repo_full_name or not installation_id:
+                results["skipped"] += 1
+                results["details"].append({
+                    "repo": repo_full_name,
+                    "status": "skipped",
+                    "reason": "Missing installation_id"
+                })
+                continue
+            
+            try:
+                # Create GitHub client for this installation
+                github_client = GitHubClient.from_installation(installation_id)
+                
+                # Start full reindex
+                job_id = await background_indexer.start_full_index(
+                    repo_full_name=repo_full_name,
+                    github_client=github_client,
+                    installation_id=installation_id
+                )
+                
+                if job_id:
+                    results["success"] += 1
+                    results["details"].append({
+                        "repo": repo_full_name,
+                        "status": "started",
+                        "job_id": job_id
+                    })
+                else:
+                    results["failed"] += 1
+                    results["details"].append({
+                        "repo": repo_full_name,
+                        "status": "failed",
+                        "reason": "Could not start indexing job"
+                    })
+                    
+            except Exception as e:
+                results["failed"] += 1
+                results["details"].append({
+                    "repo": repo_full_name,
+                    "status": "failed",
+                    "reason": str(e)
+                })
+                logger.error(f"Failed to reindex {repo_full_name}: {e}")
+            
+            # Small delay between repos to avoid overwhelming the system
+            await asyncio.sleep(2)
+        
+        logger.info(
+            f"Scheduled reindex completed: {results['success']} success, "
+            f"{results['failed']} failed, {results['skipped']} skipped"
+        )
+        
+        return results
+    
+    async def reindex_single_repository(
+        self,
+        repo_full_name: str,
+        installation_id: int
+    ) -> Dict[str, Any]:
+        """Reindex a single repository on demand.
+        
+        This is used by the /inspectai_reindex command.
+        
+        Args:
+            repo_full_name: Full repository name
+            installation_id: GitHub App installation ID
+            
+        Returns:
+            Result dict with status and job_id
+        """
+        from ..github.client import GitHubClient
+        
+        try:
+            github_client = GitHubClient.from_installation(installation_id)
+            background_indexer = get_background_indexer()
+            
+            job_id = await background_indexer.start_full_index(
+                repo_full_name=repo_full_name,
+                github_client=github_client,
+                installation_id=installation_id
+            )
+            
+            if job_id:
+                return {
+                    "status": "started",
+                    "repo": repo_full_name,
+                    "job_id": job_id,
+                    "message": f"Reindexing started for {repo_full_name}"
+                }
+            else:
+                return {
+                    "status": "failed",
+                    "repo": repo_full_name,
+                    "message": "Could not start reindexing job"
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to reindex {repo_full_name}: {e}")
+            return {
+                "status": "error",
+                "repo": repo_full_name,
+                "message": str(e)
+            }
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get current scheduler status."""
+        return {
+            "is_running": self._is_running,
+            "last_run": self._last_run.isoformat() if self._last_run else None,
+            "interval_days": self._reindex_interval_days,
+            "scheduler_active": self._scheduler_task is not None and not self._scheduler_task.done()
+        }
+
+
+# Singleton instance for scheduled reindexer
+_scheduled_reindexer: Optional[ScheduledReindexer] = None
+
+
+def get_scheduled_reindexer() -> ScheduledReindexer:
+    """Get or create the singleton ScheduledReindexer instance."""
+    global _scheduled_reindexer
+    
+    if _scheduled_reindexer is None:
+        _scheduled_reindexer = ScheduledReindexer()
+    
+    return _scheduled_reindexer
+
+
+async def start_scheduled_reindexing():
+    """Start the scheduled weekly reindexing.
+    
+    Call this on application startup to enable automatic reindexing.
+    """
+    reindexer = get_scheduled_reindexer()
+    await reindexer.start_scheduler()
+
+
+async def stop_scheduled_reindexing():
+    """Stop the scheduled reindexing.
+    
+    Call this on application shutdown.
+    """
+    reindexer = get_scheduled_reindexer()
+    await reindexer.stop_scheduler()
+

@@ -44,7 +44,7 @@ from ..utils.error_handler import (
     GracefulErrorHandler
 )
 from ..feedback.feedback_system import get_feedback_system
-from ..indexer import trigger_repo_indexing, get_context_enricher
+from ..indexer import trigger_repo_indexing, get_context_enricher, get_scheduled_reindexer
 
 logger = get_logger(__name__)
 
@@ -618,6 +618,15 @@ async def handle_agent_command(
                 )
             elif command == "help":
                 return await _handle_help_command(
+                    github_client, repo_full_name, pr_number, comment_author
+                )
+            # Hidden developer commands (not shown in /help)
+            elif command == "reindex":
+                return await _handle_reindex_command(
+                    github_client, repo_full_name, pr_number, comment_author, installation_id
+                )
+            elif command == "status":
+                return await _handle_status_command(
                     github_client, repo_full_name, pr_number, comment_author
                 )
             else:
@@ -1969,6 +1978,193 @@ React with 👍 or 👎 on any InspectAI comment to help improve future reviews!
     
     github_client.post_pr_comment(repo_full_name, pr_number, help_message)
     return {"status": "success", "command": "help"}
+
+
+# ============================================
+# Hidden Developer Commands
+# ============================================
+
+async def _handle_reindex_command(
+    github_client: GitHubClient,
+    repo_full_name: str,
+    pr_number: int,
+    comment_author: str,
+    installation_id: int
+) -> Dict[str, Any]:
+    """Handle /inspectai_reindex - Manually trigger codebase reindexing.
+    
+    This is a hidden developer command that triggers a full reindex
+    of the repository's codebase. Useful when:
+    - Scheduled reindexing job hasn't run yet
+    - Major code changes need immediate indexing
+    - Debugging indexing issues
+    
+    The command runs asynchronously - it returns immediately and
+    indexing happens in the background.
+    """
+    logger.info(f"[REINDEX] Manual reindex triggered by {comment_author} for {repo_full_name}")
+    
+    try:
+        # Get scheduled reindexer
+        scheduled_reindexer = get_scheduled_reindexer()
+        
+        # Start reindexing
+        result = await scheduled_reindexer.reindex_single_repository(
+            repo_full_name=repo_full_name,
+            installation_id=installation_id
+        )
+        
+        if result.get("status") == "started":
+            message = f"""## 🔄 Codebase Reindexing Started
+
+**Triggered by:** @{comment_author}
+**Repository:** `{repo_full_name}`
+**Job ID:** `{result.get('job_id', 'N/A')}`
+
+The codebase is being reindexed in the background. This includes:
+- 📁 Parsing all code files (Python, Java, C++, JS, etc.)
+- 🔗 Extracting function/class definitions and call graphs
+- 📊 Storing in vector database for semantic search
+- 🎯 Updating impact analysis data
+
+**Note:** Indexing may take a few minutes for large repositories.
+The next `/inspectai_review` or `/inspectai_bugs` will use the updated index.
+
+---
+*InspectAI - Developer Command*
+"""
+        else:
+            message = f"""## ⚠️ Reindexing Failed
+
+**Triggered by:** @{comment_author}
+**Repository:** `{repo_full_name}`
+**Error:** {result.get('message', 'Unknown error')}
+
+Please check:
+1. The bot has `Contents: Read` permission for this repository
+2. Supabase is configured and accessible
+3. Check server logs for more details
+
+---
+*InspectAI - Developer Command*
+"""
+        
+        github_client.post_pr_comment(repo_full_name, pr_number, message)
+        return {"status": result.get("status"), "command": "reindex", "job_id": result.get("job_id")}
+        
+    except Exception as e:
+        logger.error(f"[REINDEX] Error handling reindex command: {e}", exc_info=True)
+        error_message = f"""## ❌ Reindex Command Error
+
+**Triggered by:** @{comment_author}
+**Error:** {str(e)}
+
+Please try again or check server logs.
+
+---
+*InspectAI - Developer Command*
+"""
+        github_client.post_pr_comment(repo_full_name, pr_number, error_message)
+        return {"status": "error", "command": "reindex", "error": str(e)}
+
+
+async def _handle_status_command(
+    github_client: GitHubClient,
+    repo_full_name: str,
+    pr_number: int,
+    comment_author: str
+) -> Dict[str, Any]:
+    """Handle /inspectai_status - Show system status and indexing info.
+    
+    This is a hidden developer command that shows:
+    - Repository indexing status
+    - Scheduled reindexer status
+    - Last indexed timestamp
+    - System health information
+    """
+    logger.info(f"[STATUS] Status check triggered by {comment_author} for {repo_full_name}")
+    
+    try:
+        from ..indexer import get_codebase_indexer, get_background_indexer
+        
+        indexer = get_codebase_indexer()
+        background_indexer = get_background_indexer()
+        scheduled_reindexer = get_scheduled_reindexer()
+        
+        # Get project info
+        project_info = None
+        if indexer.client:
+            project_info = await indexer.get_project(repo_full_name)
+        
+        # Get scheduler status
+        scheduler_status = scheduled_reindexer.get_status()
+        
+        # Get current indexing status
+        indexing_status = background_indexer.get_job_status(repo_full_name)
+        
+        # Format status message
+        if project_info:
+            last_indexed = project_info.get("last_indexed_at", "Never")
+            total_files = project_info.get("total_files", 0)
+            total_symbols = project_info.get("total_symbols", 0)
+            status = project_info.get("indexing_status", "unknown")
+            
+            project_section = f"""### 📊 Repository Index Status
+| Metric | Value |
+|--------|-------|
+| **Status** | `{status}` |
+| **Last Indexed** | `{last_indexed}` |
+| **Indexed Files** | {total_files} |
+| **Indexed Symbols** | {total_symbols} |
+| **Current Activity** | `{indexing_status}` |
+"""
+        else:
+            project_section = """### 📊 Repository Index Status
+⚠️ Repository not yet indexed or Supabase not configured.
+"""
+        
+        scheduler_section = f"""### ⏰ Scheduled Reindexer
+| Setting | Value |
+|---------|-------|
+| **Active** | {'✅ Yes' if scheduler_status.get('scheduler_active') else '❌ No'} |
+| **Interval** | Every {scheduler_status.get('interval_days', 7)} days |
+| **Last Run** | `{scheduler_status.get('last_run', 'Never')}` |
+"""
+        
+        message = f"""## 📈 InspectAI System Status
+
+**Triggered by:** @{comment_author}
+**Repository:** `{repo_full_name}`
+
+{project_section}
+
+{scheduler_section}
+
+### 💡 Developer Commands
+| Command | Description |
+|---------|-------------|
+| `/inspectai_reindex` | Manually trigger codebase reindexing |
+| `/inspectai_status` | Show this status page |
+
+---
+*InspectAI - Developer Command*
+"""
+        
+        github_client.post_pr_comment(repo_full_name, pr_number, message)
+        return {"status": "success", "command": "status"}
+        
+    except Exception as e:
+        logger.error(f"[STATUS] Error handling status command: {e}", exc_info=True)
+        error_message = f"""## ❌ Status Command Error
+
+**Triggered by:** @{comment_author}
+**Error:** {str(e)}
+
+---
+*InspectAI - Developer Command*
+"""
+        github_client.post_pr_comment(repo_full_name, pr_number, error_message)
+        return {"status": "error", "command": "status", "error": str(e)}
 
 
 def _format_security_comment(finding: BugFinding) -> str:

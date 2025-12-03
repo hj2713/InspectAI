@@ -107,10 +107,31 @@ async def lifespan(app: FastAPI):
     from dotenv import load_dotenv
     load_dotenv()
     
+    # Import scheduled reindexer
+    from src.indexer import start_scheduled_reindexing, stop_scheduled_reindexing
+    
     # Startup
+    logger.info("Starting InspectAI server...")
+    
+    # Start the scheduled weekly reindexer
+    try:
+        await start_scheduled_reindexing()
+        logger.info("Scheduled reindexing service started")
+    except Exception as e:
+        logger.warning(f"Could not start scheduled reindexing: {e}")
+    
     yield
     
     # Shutdown
+    logger.info("Shutting down InspectAI server...")
+    
+    # Stop the scheduled reindexer
+    try:
+        await stop_scheduled_reindexing()
+        logger.info("Scheduled reindexing service stopped")
+    except Exception as e:
+        logger.warning(f"Error stopping scheduled reindexing: {e}")
+    
     global _orchestrator
     if _orchestrator:
         _orchestrator.cleanup()
