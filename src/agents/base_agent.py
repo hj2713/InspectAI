@@ -11,13 +11,3 @@ class BaseAgent(ABC):
     def initialize(self) -> None:
         """Initialize the agent with necessary setup."""
         pass
-    
-    @abstractmethod
-    def process(self, input_data: Any) -> Any:
-        """Process the input and return results."""
-        pass
-    
-    @abstractmethod
-    def cleanup(self) -> None:
-        """Cleanup any resources used by the agent."""
-        pass
