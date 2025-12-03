@@ -2697,7 +2697,6 @@ async def github_webhook(
                     import traceback
                     logger.error(f"[FEEDBACK-DEBUG] Traceback: {traceback.format_exc()}")
                     return {
-                    return {
                         "status": "error",
                         "message": f"Error processing feedback: {str(e)}"
                     }
