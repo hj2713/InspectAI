@@ -1479,6 +1479,56 @@ LLM_PROVIDER=gemini  # or openai, bytez
 
 ---
 
+### Q: Why use GitHub Webhooks directly instead of Hookdeck?
+
+**A:** We chose **native GitHub webhooks** over third-party webhook services like [Hookdeck](https://hookdeck.com/):
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **GitHub Webhooks (chosen)** | ✅ No extra dependency<br>✅ Zero additional cost<br>✅ Direct integration | ⚠️ Can miss events during network congestion<br>⚠️ No built-in retry queue |
+| **Hookdeck/Third-party** | ✅ More reliable delivery<br>✅ Built-in retry logic<br>✅ Better monitoring | ❌ Additional cost<br>❌ Extra service to manage |
+
+**Our reasoning:**
+- For a class project/MVP, GitHub's native webhooks are sufficient
+- GitHub does retry failed deliveries (up to 3 times)
+- We use webhook secret validation for security
+- Keeps architecture simple with fewer moving parts
+
+> **Future consideration:** If scaling to handle many concurrent PRs, consider adding a webhook relay service.
+
+---
+
+### Q: Why not use Hatchet or a queue-based architecture?
+
+**A:** We currently process webhook events **synchronously** without a job queue like [Hatchet](https://hatchet.run/):
+
+| Architecture | When to Use |
+|--------------|-------------|
+| **Current (sync)** | Low volume, single PR at a time, simpler deployment |
+| **Queue-based (Hatchet, Celery, BullMQ)** | High volume, many concurrent PRs, need retry/persistence |
+
+**Current limitations:**
+- If multiple PRs trigger reviews simultaneously, they process sequentially
+- Long-running reviews could timeout
+- Network errors may lose the request
+
+**When to add a queue:**
+- If bot is installed on many repositories
+- If reviews frequently timeout (> 30 seconds)
+- If you need guaranteed delivery and retry logic
+
+**Potential future architecture:**
+```
+GitHub Webhook → Queue (Hatchet/Redis) → Worker Processes → GitHub API
+                     ↓
+              Persistent storage
+              (survives restarts)
+```
+
+This would allow horizontal scaling and prevent lost requests during high load.
+
+---
+
 ## 🎯 Roadmap
 
 - [ ] **Web Dashboard**: Review history, metrics, agent performance
