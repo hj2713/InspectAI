@@ -1,17 +1,4 @@
-"""Simple FastAPI Web Server for the Multi-Agent Code Review System.
 
-Provides REST API endpoints for:
-- Code review tasks
-- GitHub PR reviews
-- GitHub webhooks for automated PR reviews
-- Health checks
-
-Run with:
-    python -m src.cli server --port 8000
-    
-Or directly:
-    uvicorn src.api.server:app --reload
-"""
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -296,6 +283,4 @@ def create_app() -> FastAPI:
     
     return app
 
-
-# Create app instance for uvicorn
 app = create_app()
