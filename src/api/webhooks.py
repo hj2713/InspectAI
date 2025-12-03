@@ -2623,27 +2623,38 @@ async def github_webhook(
                 try:
                     # Initialize GitHub client for fetching original comment
                     github_client = GitHubClient()
+                    logger.info(f"[FEEDBACK-DEBUG] Fetching original comment {in_reply_to_id} from {repo_full_name}")
                     original_comment = github_client.get_pr_review_comment(
                         repo_full_name, in_reply_to_id
                     )
                     if original_comment:
                         original_comment_body = original_comment.get("body", "")
+                        logger.info(f"[FEEDBACK-DEBUG] Original comment body (first 100 chars): {original_comment_body[:100] if original_comment_body else 'None'}...")
                         # Check if it's our bot's comment (contains InspectAI markers)
                         if "inspectai" not in original_comment_body.lower() and "🔍" not in original_comment_body:
                             # Not our comment, ignore
+                            logger.info(f"[FEEDBACK-DEBUG] Original comment is NOT an InspectAI comment, ignoring feedback")
                             return {
                                 "status": "ignored",
                                 "message": "Reply not to an InspectAI comment"
                             }
+                        logger.info(f"[FEEDBACK-DEBUG] Original comment IS an InspectAI comment, proceeding to store feedback")
+                    else:
+                        logger.warning(f"[FEEDBACK-DEBUG] Could not fetch original comment {in_reply_to_id} - returned None")
                 except Exception as e:
                     logger.warning(f"[FEEDBACK] Could not fetch original comment {in_reply_to_id}: {e}")
+                    import traceback
+                    logger.warning(f"[FEEDBACK-DEBUG] Traceback: {traceback.format_exc()}")
                 
                 # Try to store as written feedback
                 try:
                     from src.feedback.feedback_system import get_feedback_system
                     feedback_system = get_feedback_system()
                     
+                    logger.info(f"[FEEDBACK-DEBUG] Feedback system enabled: {feedback_system.enabled}")
+                    
                     if feedback_system.enabled:
+                        logger.info(f"[FEEDBACK-DEBUG] Calling store_written_feedback...")
                         success = await feedback_system.store_written_feedback(
                             github_comment_id=in_reply_to_id,
                             user_login=commenter,
@@ -2654,6 +2665,8 @@ async def github_webhook(
                             file_path=file_path,
                             line_number=line_number
                         )
+                        
+                        logger.info(f"[FEEDBACK-DEBUG] store_written_feedback returned: {success}")
                         
                         if success:
                             logger.info(
@@ -2668,17 +2681,22 @@ async def github_webhook(
                             }
                         else:
                             # Comment not from InspectAI, ignore
+                            logger.info(f"[FEEDBACK-DEBUG] store_written_feedback returned False - feedback not stored")
                             return {
                                 "status": "ignored",
                                 "message": "Reply not to an InspectAI comment"
                             }
                     else:
+                        logger.info(f"[FEEDBACK-DEBUG] Feedback system is NOT enabled, skipping")
                         return {
                             "status": "ignored",
                             "message": "Feedback system not enabled"
                         }
                 except Exception as e:
                     logger.error(f"[FEEDBACK] Error processing written feedback: {e}")
+                    import traceback
+                    logger.error(f"[FEEDBACK-DEBUG] Traceback: {traceback.format_exc()}")
+                    return {
                     return {
                         "status": "error",
                         "message": f"Error processing feedback: {str(e)}"
