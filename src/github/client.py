@@ -883,7 +883,7 @@ class GitHubClient:
         
         logger.info(f"Updating PR description for {owner}/{repo}#{pr_number}")
         
-        return self._api_patch(
+        return self._api_put(
             f"repos/{owner}/{repo}/pulls/{pr_number}",
             {"body": body}
         )
