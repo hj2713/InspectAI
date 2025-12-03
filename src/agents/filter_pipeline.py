@@ -19,14 +19,6 @@ class BaseFilter(ABC):
     
     @abstractmethod
     def filter(self, findings: List[Finding]) -> List[Finding]:
-        """Filter the list of findings.
-        
-        Args:
-            findings: List of findings to filter
-            
-        Returns:
-            Filtered list of findings
-        """
         pass
     
     def __call__(self, findings: List[Finding]) -> List[Finding]:
@@ -45,28 +37,6 @@ class ConfidenceFilter(BaseFilter):
         """
         self.threshold = max(0.0, min(1.0, threshold))
     
-    def filter(self, findings: List[Finding]) -> List[Finding]:
-        """Filter findings by confidence threshold.
-        
-        Args:
-            findings: List of findings to filter
-            
-        Returns:
-            Findings with confidence >= threshold
-        """
-        filtered = [f for f in findings if f.confidence >= self.threshold]
-        
-        # Log filtered count for debugging
-        if len(filtered) < len(findings):
-            removed = len(findings) - len(filtered)
-            logger.info(f"[ConfidenceFilter] Removed {removed} findings below threshold {self.threshold}")
-            for f in findings:
-                if f.confidence < self.threshold:
-                    logger.debug(f"[ConfidenceFilter] Removed: {f.category} - {f.description[:50]}... (confidence={f.confidence})")
-        
-        return filtered
-
-
 class DeduplicationFilter(BaseFilter):
     """Remove duplicate or very similar findings."""
     
@@ -273,16 +243,7 @@ class FilterPipeline:
 def create_default_pipeline(confidence_threshold: float = 0.5,
                            similarity_threshold: int = 85,
                            strict_evidence: bool = False) -> FilterPipeline:
-    """Create a default filter pipeline with common filters.
-    
-    Args:
-        confidence_threshold: Minimum confidence score
-        similarity_threshold: Fuzzy match threshold for deduplication
-        strict_evidence: Whether to require evidence for all findings
-        
-    Returns:
-        Configured FilterPipeline
-    """
+
     pipeline = FilterPipeline()
     pipeline.add_filter(DeduplicationFilter(similarity_threshold))
     pipeline.add_filter(HallucinationFilter(strict_evidence))
