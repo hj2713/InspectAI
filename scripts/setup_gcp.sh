@@ -22,18 +22,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}"
-echo "=============================================="
-echo "   InspectAI - GCP One-Time Setup"
-echo "=============================================="
-echo -e "${NC}"
-
-# Check gcloud
-if ! command -v gcloud &> /dev/null; then
-    echo -e "${RED}❌ gcloud CLI not found! Install with: brew install google-cloud-sdk${NC}"
-    exit 1
-fi
-
 # Login if needed
 if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null | grep -q .; then
     echo -e "${YELLOW}Logging in to Google Cloud...${NC}"
