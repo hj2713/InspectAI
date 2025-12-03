@@ -279,6 +279,81 @@ async def process_pr_review(
             
             result = orchestrator.process_task(task)
             logger.info(f"PR review completed for {repo_full_name}#{pr_number}")
+            
+            # Generate PR description if PR just opened
+            if action == "opened":
+                try:
+                    logger.info(f"Generating PR description for {repo_full_name}#{pr_number}")
+                    
+                    # Get PR files and changes
+                    github_client = GitHubClient()
+                    pr = github_client.get_pull_request(repo_full_name, pr_number)
+                    
+                    # Build code changes data for PR description generator
+                    code_changes = []
+                    for pr_file in pr.files:
+                        code_changes.append({
+                            "filename": pr_file.filename,
+                            "status": pr_file.status,
+                            "additions": pr_file.additions,
+                            "deletions": pr_file.deletions
+                        })
+                    
+                    # Extract bugs and analysis from the review result
+                    bugs_data = result.get("bug_detection", {}) if isinstance(result, dict) else {}
+                    analysis_data = result.get("analysis", {}) if isinstance(result, dict) else {}
+                    
+                    # Prepare input for PR description generator
+                    description_input = {
+                        "code_changes": code_changes,
+                        "bugs": {
+                            "bug_count": bugs_data.get("bug_count", 0) if isinstance(bugs_data, dict) else 0,
+                            "bugs": bugs_data.get("bugs", []) if isinstance(bugs_data, dict) else []
+                        },
+                        "security": result.get("security", {}) if isinstance(result, dict) else {},
+                        "analysis": {
+                            "suggestions": analysis_data.get("suggestions", []) if isinstance(analysis_data, dict) else []
+                        }
+                    }
+                    
+                    # Generate description
+                    pr_description_result = orchestrator.agents["pr_description"].process(description_input)
+                    
+                    if pr_description_result.get("status") == "success":
+                        generated_title = pr_description_result.get("title", "")
+                        generated_description = pr_description_result.get("description", "")
+                        pr_type = pr_description_result.get("pr_type", "general")
+                        
+                        logger.info(f"Generated PR description: {pr_type}")
+                        logger.info(f"Generated title: {generated_title}")
+                        
+                        # Update PR description on GitHub
+                        try:
+                            github_client.update_pr_body(
+                                repo_full_name,
+                                pr_number,
+                                generated_description
+                            )
+                            logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
+                            result["pr_description"] = {
+                                "status": "updated",
+                                "title": generated_title,
+                                "type": pr_type
+                            }
+                        except Exception as e:
+                            logger.warning(f"Failed to update PR description: {e}")
+                            result["pr_description"] = {
+                                "status": "generated_not_posted",
+                                "title": generated_title,
+                                "type": pr_type,
+                                "error": str(e)
+                            }
+                    else:
+                        logger.warning(f"Failed to generate PR description: {pr_description_result.get('error')}")
+                        
+                except Exception as e:
+                    logger.warning(f"Error generating PR description: {e}", exc_info=True)
+            
             return result
             
         finally:

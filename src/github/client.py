@@ -739,6 +739,26 @@ class GitHubClient:
         logger.info(f"Committed fix to {file_path} in {owner}/{repo}#{pr_number}")
         return result
     
+    def update_pr_body(self, repo_url: str, pr_number: int, body: str) -> Dict[str, Any]:
+        """Update the PR body/description.
+        
+        Args:
+            repo_url: Repository URL or owner/repo format
+            pr_number: Pull request number
+            body: New PR description
+            
+        Returns:
+            Updated PR data
+        """
+        owner, repo = self._parse_repo_url(repo_url)
+        
+        logger.info(f"Updating PR description for {owner}/{repo}#{pr_number}")
+        
+        return self._api_patch(
+            f"repos/{owner}/{repo}/pulls/{pr_number}",
+            {"body": body}
+        )
+    
     def cleanup(self) -> None:
         """Clean up temporary directories."""
         for temp_dir in self._temp_dirs:
