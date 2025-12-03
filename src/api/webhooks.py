@@ -1562,14 +1562,25 @@ async def _handle_tests_command(
     """Handle /inspectai_tests - Generate unit tests for changed code.
     
     Uses TestGenerationAgent to create pytest/unittest tests.
+    Features:
+    - Parallel processing of multiple files
+    - Generates tests ONLY for changed code (not entire files)
+    - Skips files > 500 lines to avoid timeouts
     """
     logger.info(f"[TESTS] Starting test generation for {repo_full_name}#{pr_number}")
+    
+    # Configuration
+    MAX_FILE_LINES = 500  # Skip files larger than this
+    MAX_WORKERS = 3  # Process up to 3 files in parallel
     
     generated_tests = []
     files_processed = 0
     files_failed = 0
+    files_skipped = []
     
     try:
+        # Collect files to process
+        files_to_process = []
         for pr_file in pr.files:
             if pr_file.status == "removed":
                 continue
@@ -1581,41 +1592,104 @@ async def _handle_tests_command(
             if not pr_file.filename.endswith('.py'):
                 continue
             
+            files_to_process.append(pr_file)
+        
+        if not files_to_process:
+            summary = f"""## 🧪 InspectAI Test Generation
+
+**Triggered by:** @{comment_author}
+
+ℹ️ No Python files found in this PR to generate tests for.
+"""
+            github_client.post_pr_comment(repo_full_name, pr_number, summary)
+            return {"status": "success", "tests_generated": 0}
+        
+        logger.info(f"[TESTS] Found {len(files_to_process)} Python files to process")
+        
+        # Function to process a single file
+        def process_single_file(pr_file):
             try:
                 content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
                 diff_patch = pr_file.patch if hasattr(pr_file, 'patch') else ""
                 
-                logger.info(f"[TESTS] Generating tests for {pr_file.filename}")
+                # Check file size (count lines)
+                line_count = content.count('\n') + 1
+                if line_count > MAX_FILE_LINES:
+                    logger.info(f"[TESTS] Skipping {pr_file.filename} ({line_count} lines > {MAX_FILE_LINES} limit)")
+                    return {
+                        "status": "skipped",
+                        "file": pr_file.filename,
+                        "reason": f"File too large ({line_count} lines)"
+                    }
                 
-                # Run test generation with timeout handling
+                logger.info(f"[TESTS] Generating tests for {pr_file.filename} ({line_count} lines)")
+                
+                # Run test generation - now uses diff to generate tests only for changes
                 test_result = orchestrator._safe_execute_agent("test_generation", {
                     "code": content,
                     "framework": "pytest",
                     "coverage_focus": ["happy_path", "edge_cases", "error_handling"],
-                    "diff_context": diff_patch
+                    "diff_context": diff_patch  # Agent will use this to focus on changed code only
                 })
                 
                 if test_result.get("status") == "error":
-                    logger.warning(f"[TESTS] Generation failed for {pr_file.filename}: {test_result.get('error_message')}")
-                    files_failed += 1
-                    continue
+                    return {
+                        "status": "error",
+                        "file": pr_file.filename,
+                        "error": test_result.get('error_message', 'Unknown error')
+                    }
                 
                 test_code = test_result.get("test_code", "")
                 if test_code:
-                    generated_tests.append({
+                    return {
+                        "status": "success",
                         "file": pr_file.filename,
                         "test_file": f"test_{pr_file.filename.split('/')[-1]}",
                         "test_code": test_code,
                         "descriptions": test_result.get("test_descriptions", [])
-                    })
-                    logger.info(f"[TESTS] Generated tests for {pr_file.filename} ({len(test_code)} chars)")
-                
-                files_processed += 1
-                
+                    }
+                else:
+                    return {
+                        "status": "empty",
+                        "file": pr_file.filename,
+                        "reason": "No tests generated"
+                    }
+                    
             except Exception as e:
                 logger.error(f"[TESTS] Failed to process {pr_file.filename}: {e}", exc_info=True)
-                files_failed += 1
-                continue
+                return {
+                    "status": "error",
+                    "file": pr_file.filename,
+                    "error": str(e)
+                }
+        
+        # Process files in parallel using ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        logger.info(f"[TESTS] Processing {len(files_to_process)} files with {MAX_WORKERS} workers")
+        
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_file = {
+                executor.submit(process_single_file, pr_file): pr_file 
+                for pr_file in files_to_process
+            }
+            
+            for future in as_completed(future_to_file):
+                result = future.result()
+                
+                if result["status"] == "success":
+                    generated_tests.append(result)
+                    files_processed += 1
+                    logger.info(f"[TESTS] ✓ Generated tests for {result['file']}")
+                elif result["status"] == "skipped":
+                    files_skipped.append(result)
+                    logger.info(f"[TESTS] ⏭ Skipped {result['file']}: {result['reason']}")
+                elif result["status"] == "empty":
+                    files_processed += 1
+                    logger.info(f"[TESTS] ○ No tests for {result['file']}")
+                else:  # error
+                    files_failed += 1
+                    logger.warning(f"[TESTS] ✗ Failed {result['file']}: {result.get('error', 'Unknown')}")
         
         # Build summary comment
         summary = f"""## 🧪 InspectAI Test Generation
@@ -1626,8 +1700,15 @@ async def _handle_tests_command(
 
 """
         
+        if files_skipped:
+            summary += f"⏭️ **Skipped {len(files_skipped)} large file(s)** (>{MAX_FILE_LINES} lines):\n"
+            for skipped in files_skipped:
+                summary += f"- `{skipped['file']}` - {skipped['reason']}\n"
+            summary += "\n"
+        
         if generated_tests:
             summary += "### Generated Tests\n\n"
+            summary += "ℹ️ *Tests generated for **changed code only** (not entire files)*\n\n"
             for test in generated_tests:
                 summary += f"<details>\n<summary>📝 <code>{test['test_file']}</code> (for {test['file']})</summary>\n\n"
                 summary += f"```python\n{test['test_code'][:3000]}\n```\n"
@@ -1636,13 +1717,13 @@ async def _handle_tests_command(
                 summary += "\n</details>\n\n"
         else:
             summary += "ℹ️ No tests could be generated. This might be because:\n"
-            summary += "- No Python files were changed\n"
-            summary += "- The changed code doesn't have testable functions\n"
+            summary += "- No testable functions were added/modified\n"
+            summary += "- The changes were too small (e.g., import changes)\n"
         
         if files_failed > 0:
-            summary += f"\n⚠️ **Note:** {files_failed} file(s) could not be processed.\n"
+            summary += f"\n⚠️ **Note:** {files_failed} file(s) failed to process.\n"
         
-        summary += "\n---\n*Copy the generated tests to your test directory and run `pytest` to verify.*\n"
+        summary += "\n---\n*Tests generated for changed code only. Copy to your test directory and run `pytest`.*\n"
         
         logger.info(f"[TESTS] Posting summary comment to PR #{pr_number}")
         github_client.post_pr_comment(repo_full_name, pr_number, summary)
