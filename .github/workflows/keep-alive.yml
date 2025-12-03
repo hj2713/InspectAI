@@ -2,9 +2,12 @@ name: Keep Render Alive
 
 on:
   schedule:
-    # Runs every 4 minutes
-    - cron: '*/4 * * * *'
+    # Runs every 5 minutes (GitHub may delay this during high load)
+    - cron: '*/5 * * * *'
   workflow_dispatch:  # Allow manual trigger
+  push:
+    branches:
+      - main  # Also trigger on pushes to keep active
 
 jobs:
   ping:
@@ -20,3 +23,8 @@ jobs:
           else
             echo "⚠️ Service returned: $response"
           fi
+      
+      - name: Ping webhook endpoint as backup
+        run: |
+          echo "Pinging webhook endpoint..."
+          curl -s -o /dev/null https://inspectai-f0vx.onrender.com/webhook/github || true
