@@ -11,6 +11,9 @@ pydantic>=2.0.0
 # LLM providers
 bytez>=0.0.0
 
+# Gemini
+google-generativeai>=0.3.0
+
 # GitHub App authentication
 PyJWT>=2.8.0
 cryptography>=41.0.0
@@ -18,3 +21,9 @@ cryptography>=41.0.0
 # Text matching
 fuzzywuzzy>=0.18.0
 python-Levenshtein>=0.21.0
+
+# Vector Database for PR memory
+chromadb>=0.4.0
+
+# Supabase for feedback system and vector storage
+supabase>=2.0.0

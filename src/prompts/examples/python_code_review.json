@@ -1,0 +1,40 @@
+{
+  "examples": [
+    {
+      "language": "python",
+      "input_code": "def get_user(user_id):\n    query = f\"SELECT * FROM users WHERE id = {user_id}\"\n    return db.execute(query)",
+      "expected_output": {
+        "line": 2,
+        "severity": "critical",
+        "category": "security",
+        "description": "SQL injection vulnerability. User input is directly interpolated into SQL query using f-string.",
+        "fix_suggestion": "Use parameterized queries: db.execute('SELECT * FROM users WHERE id = ?', (user_id,))",
+        "confidence": 0.95
+      }
+    },
+    {
+      "language": "python",
+      "input_code": "def process_items(items=[]):\n    items.append(\"processed\")\n    return items",
+      "expected_output": {
+        "line": 1,
+        "severity": "high",
+        "category": "bug",
+        "description": "Mutable default argument. The list will persist and be shared across all function calls without arguments.",
+        "fix_suggestion": "Use None as default: def process_items(items=None):\n    items = items if items is not None else []\n    items.append('processed')\n    return items",
+        "confidence": 0.9
+      }
+    },
+    {
+      "language": "python",
+      "input_code": "try:\n    result = risky_operation()\nexcept:\n    pass",
+      "expected_output": {
+        "line": 3,
+        "severity": "high",
+        "category": "bug",
+        "description": "Bare except clause catches all exceptions including KeyboardInterrupt and SystemExit. Silently passing hides errors.",
+        "fix_suggestion": "Catch specific exceptions and handle them: except SpecificException as e:\n    logger.error(f'Operation failed: {e}')",
+        "confidence": 0.85
+      }
+    }
+  ]
+}

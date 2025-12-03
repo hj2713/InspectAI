@@ -28,38 +28,39 @@ class AuthScanner(SpecializedAgent):
         Returns:
             List of Finding objects related to auth issues
         """
-        language = "code"
-        if filename:
-            if filename.endswith(".py"):
-                language = "Python"
-            elif filename.endswith(".js"):
-                language = "JavaScript"
-            elif filename.endswith(".ts"):
-                language = "TypeScript"
-            elif filename.endswith(".html"):
-                language = "HTML"
+        from ...utils.language_detection import detect_language
+        language = detect_language(filename)
 
         system_prompt = {
             "role": "system",
-            "content": f"""You are a security expert specializing in authentication/authorization in {language}. Analyze for auth issues ONLY.
+            "content": f"""You are a STRICT security expert analyzing {language} code for REAL authentication/authorization issues.
 
-Focus on:
-1. Missing authentication checks before sensitive operations
-2. Weak password policies or storage
-3. Authorization bypass (accessing resources without permission checks)
-4. Insecure session management
-5. Missing access control checks
-6. Language-specific auth vulnerabilities
+ONLY report if you find:
+1. Missing auth: Sensitive operations (delete, admin actions) with NO auth check before them
+2. Weak passwords: Hardcoded passwords, or accepting passwords < 8 chars
+3. Auth bypass: Code that skips auth checks (e.g., if user.is_admin always returns true)
+4. Insecure sessions: Session tokens stored in localStorage, no expiry, predictable IDs
 
-For EACH auth issue found, respond with this EXACT format:
+DO NOT FLAG (these are acceptable):
+- Internal function calls that assume caller already authenticated
+- Backend services communicating with each other (service-to-service)
+- Webhook handlers (GitHub validates webhooks separately)
+- CLI tools or scripts (not web-exposed)
+- Code that checks auth elsewhere (middleware, decorators, guards)
+- Helper functions that don't handle user requests directly
+- Installation ID based auth (GitHub App pattern) - this is valid auth
+
+Be VERY conservative. Only flag if you see CLEAR auth problems in web-exposed endpoints.
+
+For EACH CONFIRMED issue, respond with:
 Category: Authentication/Authorization
 Severity: [medium/high/critical]
-Description: [explain the auth security issue]
-Location: [line X or function name]
-Fix: [add auth checks, improve password handling, etc.]
-Confidence: [0.0-1.0]
+Description: [explain what sensitive action lacks what auth check]
+Location: [line X]
+Fix: [specific fix]
+Confidence: [0.7-1.0 only if certain]
 
-Only report actual auth issues. If auth is properly handled, respond with "No auth issues found."
+If code is safe, respond with: "No auth issues found."
 """
         }
         
