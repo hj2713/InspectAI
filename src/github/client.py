@@ -309,101 +309,142 @@ class GitHubClient:
         raise ValueError(f"Could not parse repository URL: {repo_url}")
     
     def _api_get(self, endpoint: str, retry_count: int = 3) -> Dict[str, Any]:
-        """Make a GET request to GitHub API with rate limit handling.
+        """Make a GET request to GitHub API with rate limit and connection error handling.
         
         Args:
             endpoint: API endpoint
-            retry_count: Number of retries on rate limit (default 3)
+            retry_count: Number of retries on errors (default 3)
             
         Returns:
             JSON response data
             
         Raises:
-            requests.HTTPError: On non-rate-limit errors or after retries exhausted
+            requests.HTTPError: On non-recoverable errors or after retries exhausted
         """
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
         logger.debug(f"GET {url}")
         
+        last_exception = None
         for attempt in range(retry_count + 1):
-            response = self.session.get(url)
-            
-            # Check rate limit headers
-            remaining = response.headers.get('X-RateLimit-Remaining', '?')
-            limit = response.headers.get('X-RateLimit-Limit', '?')
-            
-            if response.status_code == 403 and 'rate limit' in response.text.lower():
-                reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
-                wait_seconds = max(reset_time - int(time.time()), 60)
+            try:
+                response = self.session.get(url, timeout=30)
                 
+                # Check rate limit headers
+                remaining = response.headers.get('X-RateLimit-Remaining', '?')
+                limit = response.headers.get('X-RateLimit-Limit', '?')
+                
+                if response.status_code == 403 and 'rate limit' in response.text.lower():
+                    reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
+                    wait_seconds = max(reset_time - int(time.time()), 60)
+                    
+                    if attempt < retry_count:
+                        wait_seconds = min(wait_seconds, 300)
+                        logger.warning(
+                            f"Rate limit hit ({remaining}/{limit}). "
+                            f"Waiting {wait_seconds}s before retry {attempt + 1}/{retry_count}"
+                        )
+                        time.sleep(wait_seconds)
+                        continue
+                    else:
+                        logger.error(f"Rate limit exceeded after {retry_count} retries.")
+                        response.raise_for_status()
+                
+                # Log rate limit status periodically
+                if remaining != '?' and int(remaining) < 100:
+                    logger.warning(f"GitHub API rate limit low: {remaining}/{limit} remaining")
+                
+                response.raise_for_status()
+                return response.json()
+                
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                last_exception = e
                 if attempt < retry_count:
-                    # Cap wait time at 5 minutes for retries
-                    wait_seconds = min(wait_seconds, 300)
-                    logger.warning(
-                        f"Rate limit hit ({remaining}/{limit}). "
-                        f"Waiting {wait_seconds}s before retry {attempt + 1}/{retry_count}"
-                    )
-                    time.sleep(wait_seconds)
+                    wait_time = (attempt + 1) * 2  # Exponential backoff: 2, 4, 6 seconds
+                    logger.warning(f"Connection error: {e}. Retrying in {wait_time}s ({attempt + 1}/{retry_count})")
+                    time.sleep(wait_time)
                     continue
                 else:
-                    logger.error(f"Rate limit exceeded after {retry_count} retries. Reset at {reset_time}")
-                    response.raise_for_status()
-            
-            # Log rate limit status periodically
-            if remaining != '?' and int(remaining) < 100:
-                logger.warning(f"GitHub API rate limit low: {remaining}/{limit} remaining")
-            
-            response.raise_for_status()
-            return response.json()
+                    logger.error(f"Connection failed after {retry_count} retries: {e}")
+                    raise
         
         # Should not reach here, but just in case
-        response.raise_for_status()
-        return response.json()
+        if last_exception:
+            raise last_exception
+        raise requests.exceptions.RequestException("Request failed after retries")
     
     def _api_post(self, endpoint: str, data: Dict[str, Any], retry_count: int = 3) -> Dict[str, Any]:
-        """Make a POST request to GitHub API with rate limit handling."""
+        """Make a POST request to GitHub API with rate limit and connection error handling."""
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
         logger.debug(f"POST {url}")
         
+        last_exception = None
         for attempt in range(retry_count + 1):
-            response = self.session.post(url, json=data)
-            
-            if response.status_code == 403 and 'rate limit' in response.text.lower():
-                reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
-                wait_seconds = min(max(reset_time - int(time.time()), 60), 300)
+            try:
+                response = self.session.post(url, json=data, timeout=30)
                 
+                if response.status_code == 403 and 'rate limit' in response.text.lower():
+                    reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
+                    wait_seconds = min(max(reset_time - int(time.time()), 60), 300)
+                    
+                    if attempt < retry_count:
+                        logger.warning(f"Rate limit hit. Waiting {wait_seconds}s before retry {attempt + 1}/{retry_count}")
+                        time.sleep(wait_seconds)
+                        continue
+                
+                response.raise_for_status()
+                return response.json()
+                
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                last_exception = e
                 if attempt < retry_count:
-                    logger.warning(f"Rate limit hit. Waiting {wait_seconds}s before retry {attempt + 1}/{retry_count}")
-                    time.sleep(wait_seconds)
+                    wait_time = (attempt + 1) * 2
+                    logger.warning(f"Connection error: {e}. Retrying in {wait_time}s ({attempt + 1}/{retry_count})")
+                    time.sleep(wait_time)
                     continue
-            
-            response.raise_for_status()
-            return response.json()
+                else:
+                    logger.error(f"Connection failed after {retry_count} retries: {e}")
+                    raise
         
-        response.raise_for_status()
-        return response.json()
+        if last_exception:
+            raise last_exception
+        raise requests.exceptions.RequestException("Request failed after retries")
     
     def _api_put(self, endpoint: str, data: Dict[str, Any], retry_count: int = 3) -> Dict[str, Any]:
-        """Make a PUT request to GitHub API with rate limit handling."""
+        """Make a PUT request to GitHub API with rate limit and connection error handling."""
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
         logger.debug(f"PUT {url}")
         
+        last_exception = None
         for attempt in range(retry_count + 1):
-            response = self.session.put(url, json=data)
-            
-            if response.status_code == 403 and 'rate limit' in response.text.lower():
-                reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
-                wait_seconds = min(max(reset_time - int(time.time()), 60), 300)
+            try:
+                response = self.session.put(url, json=data, timeout=30)
                 
+                if response.status_code == 403 and 'rate limit' in response.text.lower():
+                    reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
+                    wait_seconds = min(max(reset_time - int(time.time()), 60), 300)
+                    
+                    if attempt < retry_count:
+                        logger.warning(f"Rate limit hit. Waiting {wait_seconds}s before retry {attempt + 1}/{retry_count}")
+                        time.sleep(wait_seconds)
+                        continue
+                
+                response.raise_for_status()
+                return response.json()
+                
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                last_exception = e
                 if attempt < retry_count:
-                    logger.warning(f"Rate limit hit. Waiting {wait_seconds}s before retry {attempt + 1}/{retry_count}")
-                    time.sleep(wait_seconds)
+                    wait_time = (attempt + 1) * 2
+                    logger.warning(f"Connection error: {e}. Retrying in {wait_time}s ({attempt + 1}/{retry_count})")
+                    time.sleep(wait_time)
                     continue
-            
-            response.raise_for_status()
-            return response.json()
+                else:
+                    logger.error(f"Connection failed after {retry_count} retries: {e}")
+                    raise
         
-        response.raise_for_status()
-        return response.json()
+        if last_exception:
+            raise last_exception
+        raise requests.exceptions.RequestException("Request failed after retries")
     
     def get_rate_limit_status(self) -> Dict[str, Any]:
         """Get current rate limit status from GitHub API.
