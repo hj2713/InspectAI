@@ -443,7 +443,8 @@ async def process_pr_review(
                     logger.info(f"Generating PR description for {repo_full_name}#{pr_number}")
                     
                     # Get PR files and changes
-                    github_client = GitHubClient()
+                    # Use personal access token for PR description updates (not GitHub App token)
+                    github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
                     pr = github_client.get_pull_request(repo_full_name, pr_number)
                     
                     # Build code changes data for PR description generator
