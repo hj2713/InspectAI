@@ -381,14 +381,8 @@ class BackgroundIndexer:
         all_files = []
         
         try:
-            owner, repo = repo_full_name.split("/")
-            
-            # Use GitHub API to get tree
-            # This is a simplified approach - in production, use recursive tree API
-            contents = github_client.get_repo_contents(owner, repo, path)
-            
-            if not isinstance(contents, list):
-                contents = [contents]
+            # Use the GitHubClient's get_repo_files method
+            contents = github_client.get_repo_files(repo_full_name, path)
             
             for item in contents:
                 if item.get("type") == "file":
@@ -415,8 +409,7 @@ class BackgroundIndexer:
     ) -> Optional[str]:
         """Fetch file content from GitHub."""
         try:
-            owner, repo = repo_full_name.split("/")
-            content = github_client.get_file_content(owner, repo, file_path)
+            content = github_client.get_file_content(repo_full_name, file_path)
             return content
         except Exception as e:
             logger.debug(f"Could not fetch {file_path}: {e}")

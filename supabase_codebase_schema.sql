@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS indexed_projects (
     -- Statistics
     total_files INTEGER DEFAULT 0,
     total_symbols INTEGER DEFAULT 0,
+    total_calls INTEGER DEFAULT 0,
     total_dependencies INTEGER DEFAULT 0,
     
     -- Metadata
