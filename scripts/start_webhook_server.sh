@@ -25,13 +25,6 @@ fi
 # Default port
 PORT=${PORT:-8000}
 
-echo "=========================================="
-echo "Multi-Agent Code Review - Webhook Server"
-echo "=========================================="
-echo ""
-echo "Starting server on port $PORT..."
-echo ""
-
 # Check if ngrok is installed
 if command -v ngrok &> /dev/null; then
     echo "To expose your webhook to the internet, run in another terminal:"
@@ -41,12 +34,6 @@ if command -v ngrok &> /dev/null; then
     echo "Example: https://abc123.ngrok.io/webhooks/github"
     echo ""
 fi
-
-echo "Local webhook endpoint: http://localhost:$PORT/webhooks/github"
-echo "API documentation: http://localhost:$PORT/docs"
-echo ""
-echo "=========================================="
-echo ""
 
 # Activate virtual environment
 source venv/bin/activate
