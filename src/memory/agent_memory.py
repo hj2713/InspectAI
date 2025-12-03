@@ -18,9 +18,6 @@ Usage:
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from collections import deque
-import json
-from pathlib import Path
 
 from ..utils.logger import get_logger
 
@@ -61,14 +58,6 @@ class TaskContext:
     started_at: datetime = field(default_factory=datetime.now)
     input_data: Dict[str, Any] = field(default_factory=dict)
     intermediate_results: Dict[str, Any] = field(default_factory=dict)
-    
-    def add_result(self, agent_name: str, result: Any) -> None:
-        """Add intermediate result from an agent."""
-        self.intermediate_results[agent_name] = {
-            "result": result,
-            "timestamp": datetime.now().isoformat()
-        }
-
 
 class AgentMemory:
     """Memory system for maintaining agent conversation history."""
