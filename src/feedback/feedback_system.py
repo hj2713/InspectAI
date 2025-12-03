@@ -322,6 +322,159 @@ class FeedbackSystem:
         
         return filtered
     
+    async def store_written_feedback(
+        self,
+        github_comment_id: int,
+        user_login: str,
+        explanation: str,
+        reaction_type: Optional[str] = None
+    ) -> bool:
+        """Store written feedback from a user reply to an InspectAI comment.
+        
+        Users can reply to InspectAI comments with text explanations like:
+        - "This isn't a real bug, it's intentional behavior"
+        - "Good catch! Fixed in next commit"
+        
+        Args:
+            github_comment_id: The original InspectAI comment ID being replied to
+            user_login: GitHub username of the person providing feedback
+            explanation: The text of their reply/feedback
+            reaction_type: Optional reaction type if they also reacted
+            
+        Returns:
+            True if stored successfully, False otherwise
+        """
+        if not self.enabled:
+            logger.warning("Feedback system not enabled - cannot store written feedback")
+            return False
+        
+        try:
+            # Find the comment in our database by github_comment_id
+            comment_result = self.client.table("review_comments")\
+                .select("id")\
+                .eq("github_comment_id", github_comment_id)\
+                .execute()
+            
+            if not comment_result.data:
+                logger.warning(f"Comment {github_comment_id} not found in database")
+                return False
+            
+            comment_id = comment_result.data[0]["id"]
+            
+            # Infer sentiment from explanation if no reaction provided
+            if not reaction_type:
+                reaction_type = self._infer_sentiment_from_text(explanation)
+            
+            # Upsert feedback with explanation
+            self.client.table("comment_feedback").upsert({
+                "comment_id": comment_id,
+                "user_login": user_login,
+                "reaction_type": reaction_type,
+                "explanation": explanation[:2000]  # Limit to 2000 chars
+            }, on_conflict="comment_id,user_login,reaction_type").execute()
+            
+            logger.info(
+                f"Stored written feedback from {user_login} for comment {github_comment_id}: "
+                f"'{explanation[:50]}...' (sentiment: {reaction_type})"
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing written feedback: {e}")
+            return False
+    
+    def _infer_sentiment_from_text(self, text: str) -> str:
+        """Infer sentiment (thumbs_up/thumbs_down) from feedback text.
+        
+        Simple keyword-based inference. Future: Use LLM for better analysis.
+        
+        Args:
+            text: Feedback text to analyze
+            
+        Returns:
+            Inferred reaction type (thumbs_up or thumbs_down)
+        """
+        text_lower = text.lower()
+        
+        # Positive indicators
+        positive_keywords = [
+            "good catch", "thanks", "fixed", "helpful", "great", "nice", 
+            "agree", "correct", "valid", "important", "true", "right",
+            "yes", "exactly", "spot on", "you're right", "good point"
+        ]
+        
+        # Negative indicators
+        negative_keywords = [
+            "not a bug", "intentional", "false positive", "wrong", "incorrect",
+            "disagree", "no", "irrelevant", "not relevant", "doesn't apply",
+            "not applicable", "ignore", "skip", "unnecessary", "by design",
+            "expected", "on purpose", "supposed to"
+        ]
+        
+        positive_score = sum(1 for kw in positive_keywords if kw in text_lower)
+        negative_score = sum(1 for kw in negative_keywords if kw in text_lower)
+        
+        if negative_score > positive_score:
+            return "thumbs_down"
+        elif positive_score > 0:
+            return "thumbs_up"
+        else:
+            # Default to neutral/negative if unclear (more conservative)
+            return "thumbs_down"
+    
+    async def get_feedback_for_comment(
+        self,
+        github_comment_id: int
+    ) -> Dict[str, Any]:
+        """Get all feedback for a specific comment.
+        
+        Args:
+            github_comment_id: GitHub comment ID
+            
+        Returns:
+            Dict with feedback counts and explanations
+        """
+        if not self.enabled:
+            return {"enabled": False}
+        
+        try:
+            # Find comment in our database
+            comment_result = self.client.table("review_comments")\
+                .select("id")\
+                .eq("github_comment_id", github_comment_id)\
+                .execute()
+            
+            if not comment_result.data:
+                return {"found": False}
+            
+            comment_id = comment_result.data[0]["id"]
+            
+            # Get all feedback for this comment
+            feedback_result = self.client.table("comment_feedback")\
+                .select("user_login, reaction_type, explanation, created_at")\
+                .eq("comment_id", comment_id)\
+                .execute()
+            
+            feedback = feedback_result.data or []
+            
+            return {
+                "found": True,
+                "thumbs_up": sum(1 for f in feedback if f["reaction_type"] == "thumbs_up"),
+                "thumbs_down": sum(1 for f in feedback if f["reaction_type"] == "thumbs_down"),
+                "explanations": [
+                    {
+                        "user": f["user_login"],
+                        "text": f["explanation"],
+                        "sentiment": f["reaction_type"]
+                    }
+                    for f in feedback if f.get("explanation")
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting feedback: {e}")
+            return {"error": str(e)}
+    
     async def record_filter_stats(
         self,
         repo_full_name: str,

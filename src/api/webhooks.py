@@ -2193,6 +2193,77 @@ async def github_webhook(
                 "message": "Not a new comment on a PR"
             }
     
+    # Handle pull_request_review_comment events (for written feedback on bot comments)
+    if event_type == "pull_request_review_comment":
+        action = payload.get("action")
+        comment = payload.get("comment", {})
+        
+        # Only process new comments that are replies
+        if action == "created":
+            in_reply_to_id = comment.get("in_reply_to_id")
+            comment_body = comment.get("body", "")
+            commenter = comment.get("user", {}).get("login", "")
+            repo = payload.get("repository", {})
+            repo_full_name = repo.get("full_name", "unknown/unknown")
+            
+            # Check if this is a reply to another comment (potential feedback)
+            if in_reply_to_id:
+                logger.info(
+                    f"[FEEDBACK] Reply detected from {commenter} to comment {in_reply_to_id} "
+                    f"in {repo_full_name}: '{comment_body[:50]}...'"
+                )
+                
+                # Try to store as written feedback
+                try:
+                    from src.feedback.feedback_system import get_feedback_system
+                    feedback_system = get_feedback_system()
+                    
+                    if feedback_system.enabled:
+                        success = await feedback_system.store_written_feedback(
+                            github_comment_id=in_reply_to_id,
+                            user_login=commenter,
+                            explanation=comment_body
+                        )
+                        
+                        if success:
+                            logger.info(
+                                f"[FEEDBACK] Stored written feedback from {commenter} "
+                                f"for comment {in_reply_to_id}"
+                            )
+                            return {
+                                "status": "ok",
+                                "message": "Written feedback recorded",
+                                "in_reply_to": in_reply_to_id,
+                                "user": commenter
+                            }
+                        else:
+                            # Comment not from InspectAI, ignore
+                            return {
+                                "status": "ignored",
+                                "message": "Reply not to an InspectAI comment"
+                            }
+                    else:
+                        return {
+                            "status": "ignored",
+                            "message": "Feedback system not enabled"
+                        }
+                except Exception as e:
+                    logger.error(f"[FEEDBACK] Error processing written feedback: {e}")
+                    return {
+                        "status": "error",
+                        "message": f"Error processing feedback: {str(e)}"
+                    }
+            else:
+                return {
+                    "status": "ignored",
+                    "message": "Not a reply comment"
+                }
+        else:
+            return {
+                "status": "ignored",
+                "message": f"Action '{action}' not processed for review comments"
+            }
+    
     # Handle push events (optional - for tracking branch updates)
     if event_type == "push":
         repo = payload.get("repository", {})
@@ -2220,11 +2291,15 @@ async def webhook_status():
     return {
         "status": "active",
         "processed_events": len(_processed_events),
-        "supported_events": ["ping", "pull_request", "issue_comment", "push"],
+        "supported_events": ["ping", "pull_request", "issue_comment", "pull_request_review_comment", "push"],
         "supported_pr_actions": ["opened", "synchronize", "reopened"],
         "supported_commands": [
             "/InspectAI_review - Code Reviewer Agent (logic, naming, security)",
             "/InspectAI_bugs - Bug Finder Agent (runtime errors, edge cases)",
             "/InspectAI_refactor - Refactor Agent (code improvements)"
-        ]
+        ],
+        "feedback": {
+            "reactions": "👍 (thumbs up) = helpful, 👎 (thumbs down) = not helpful",
+            "written": "Reply to any InspectAI comment with your explanation"
+        }
     }
