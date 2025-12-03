@@ -394,26 +394,25 @@ async def _handle_review_command(
     """
     logger.info(f"[REVIEW] Starting diff-only review for {repo_full_name}#{pr_number}")
     
-    inline_comments = []
-    files_reviewed = 0
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     
-    for pr_file in pr.files:
-        if pr_file.status == "removed":
-            continue
-        
-        if not orchestrator._is_code_file(pr_file.filename):
-            continue
-        
+    def process_single_file(pr_file):
+        """Process a single file and return inline comments."""
         try:
+            if pr_file.status == "removed":
+                return []
+            
+            if not orchestrator._is_code_file(pr_file.filename):
+                return []
+            
             # Get changed line ranges from diff
             changed_ranges = parse_diff_for_changed_lines(pr_file.patch)
             if not changed_ranges:
                 logger.info(f"[REVIEW] No changed lines in {pr_file.filename}")
-                continue
+                return []
             
             # Get file content
             content = github_client.get_pr_file_content(repo_full_name, pr_number, pr_file.filename)
-            lines = content.split('\n')
             
             # Build diff context for the LLM
             diff_context = f"""FILE: {pr_file.filename}
@@ -443,6 +442,7 @@ IMPORTANT INSTRUCTIONS:
             analysis = orchestrator.agents["analysis"].process(diff_context)
             
             # Create inline comments for findings
+            file_comments = []
             for suggestion in analysis.get("suggestions", []):
                 if isinstance(suggestion, dict):
                     line_num = extract_line_number_from_finding(suggestion) or changed_ranges[0][0]
@@ -458,14 +458,12 @@ IMPORTANT INSTRUCTIONS:
                         valid_line = changed_ranges[0][0]
                     
                     comment_body = _format_inline_comment(suggestion)
-                    inline_comments.append({
+                    file_comments.append({
                         "path": pr_file.filename,
                         "line": valid_line,
                         "side": "RIGHT",
                         "body": comment_body
                     })
-            
-            files_reviewed += 1
             
             # Store review context in memory
             pr_memory.store_review_context(
@@ -474,9 +472,29 @@ IMPORTANT INSTRUCTIONS:
                 {"file": pr_file.filename, "command": "review"}
             )
             
+            return file_comments
+            
         except Exception as e:
             logger.error(f"[REVIEW] Failed to analyze {pr_file.filename}: {e}", exc_info=True)
-            continue
+            return []
+    
+    # Process files in parallel (max 5 at a time to avoid overwhelming LLM API)
+    inline_comments = []
+    files_reviewed = 0
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_file = {executor.submit(process_single_file, pr_file): pr_file for pr_file in pr.files}
+        
+        for future in as_completed(future_to_file):
+            pr_file = future_to_file[future]
+            try:
+                file_comments = future.result()
+                if file_comments:
+                    inline_comments.extend(file_comments)
+                    files_reviewed += 1
+            except Exception as e:
+                logger.error(f"[REVIEW] Error processing {pr_file.filename}: {e}")
+                continue
     
     # Post review with inline comments
     if inline_comments:

@@ -1,19 +1,20 @@
-# InspectAI - Multi-Agent Code Review System
+# InspectAI - Expert Code Review System
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7.svg)](https://render.com)
 
-A production-grade multi-agent system powered by **12 specialized AI agents** for automated code review, bug detection, and security analysis. Deployed as a GitHub App for seamless PR reviews.
+A production-grade AI-powered code review system with an expert reviewer agent that analyzes code like a senior software developer. Deployed as a GitHub App for seamless PR reviews with parallel file processing.
 
 ---
 
 ## 🌟 Features
 
-- **12 Specialized Agents**: Each focuses on one aspect (naming, security, edge cases, etc.)
-- **GitHub App Integration**: Automated PR reviews with inline comments
+- **Expert Code Reviewer**: Single specialized agent that reviews code like a 10+ year senior developer
+- **Diff-Aware Analysis**: Understands what was added, removed, or changed - provides contextual feedback
+- **Multi-Language Support**: Reviews Python, JavaScript, TypeScript, Java, Go, and more
+- **Parallel File Processing**: Analyzes multiple files simultaneously for 3-5x faster reviews
+- **GitHub App Integration**: Automated PR reviews with inline comments on specific lines
 - **Multiple LLM Support**: Google Gemini (default), OpenAI, Bytez
-- **Parallel Execution**: Faster analysis via concurrent agent execution
-- **Filter Pipeline**: Deduplication and hallucination detection
 - **Deployed on Render**: 24/7 availability
 
 ---
@@ -24,11 +25,13 @@ A production-grade multi-agent system powered by **12 specialized AI agents** fo
 
 ```
 OrchestratorAgent
-├── CodeAnalysisAgent (4 sub-agents)
-│   ├── NamingReviewer      - PEP 8 naming, variable clarity
-│   ├── QualityReviewer     - Complexity, best practices
-│   ├── DuplicationDetector - Repeated patterns
-│   └── PEP8Reviewer        - Style guide, formatting
+├── CodeAnalysisAgent
+│   └── CodeReviewExpert - Senior developer-level review for all languages
+│       • Detects logic errors & bugs in changed code
+│       • Identifies security vulnerabilities
+│       • Catches missing error handling
+│       • Reviews performance issues
+│       • Diff-aware: knows what was added vs removed
 │
 ├── BugDetectionAgent (4 sub-agents)
 │   ├── LogicErrorDetector   - Off-by-one, algorithm errors
@@ -42,6 +45,12 @@ OrchestratorAgent
     ├── DataExposureScanner  - Hardcoded secrets
     └── DependencyScanner    - Unsafe library usage
 ```
+
+### Key Improvements
+
+- **Single Expert vs Multiple Sub-Agents**: Replaced 4 generic sub-agents with one comprehensive expert reviewer
+- **Parallel Processing**: Files are analyzed concurrently (5 at a time) instead of sequentially
+- **Context-Aware**: Expert understands diff context - won't suggest adding docstrings that were intentionally removed
 
 ---
 
