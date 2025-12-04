@@ -436,16 +436,16 @@ async def process_pr_review(
         
         logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
         
-        # Update PR description immediately
+        # Post PR description as a comment instead of updating PR body
         try:
-            github_client.update_pr_body(
+            github_client.post_pr_comment(
                 repo_full_name,
                 pr_number,
                 generated_description
             )
-            logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
+            logger.info(f"Posted PR description as comment for {repo_full_name}#{pr_number}")
         except Exception as e:
-            logger.warning(f"Failed to update PR description: {e}")
+            logger.warning(f"Failed to post PR description comment: {e}")
         
         logger.info(f"PR description complete for {repo_full_name}#{pr_number}")
         
