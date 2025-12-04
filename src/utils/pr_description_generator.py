@@ -32,7 +32,7 @@ class FileChange:
     explanation: Optional[str] = None  # LLM-generated explanation
 
 
-async def analyze_diff_with_llm(filename: str, diff: str, llm_client=None) -> str:
+def analyze_diff_with_llm(filename: str, diff: str, llm_client=None) -> str:
     """
     Analyze a code diff using LLM to generate human-readable explanation.
     
@@ -71,7 +71,7 @@ Focus on:
 
 Keep it concise and technical. Don't mention file stats."""
         
-        # Call LLM using chat method
+        # Call LLM using chat method (synchronous)
         messages = [{"role": "user", "content": prompt}]
         response = llm_client.chat(
             messages=messages,

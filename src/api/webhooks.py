@@ -412,7 +412,7 @@ async def process_pr_review(
             if pr_file.patch and pr_file.status == "modified":
                 try:
                     logger.info(f"[PR_DESC] Analyzing diff for {pr_file.filename}...")
-                    explanation = await analyze_diff_with_llm(
+                    explanation = analyze_diff_with_llm(
                         pr_file.filename,
                         pr_file.patch,
                         llm_client=None  # Will use default client
@@ -436,16 +436,16 @@ async def process_pr_review(
         
         logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
         
-        # Post PR description as a comment instead of updating PR body
+        # Update PR description immediately
         try:
-            github_client.post_pr_comment(
+            github_client.update_pr_body(
                 repo_full_name,
                 pr_number,
                 generated_description
             )
-            logger.info(f"Posted PR description as comment for {repo_full_name}#{pr_number}")
+            logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
         except Exception as e:
-            logger.warning(f"Failed to post PR description comment: {e}")
+            logger.warning(f"Failed to update PR description: {e}")
         
         logger.info(f"PR description complete for {repo_full_name}#{pr_number}")
         
