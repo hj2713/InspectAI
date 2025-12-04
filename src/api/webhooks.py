@@ -447,50 +447,45 @@ async def process_pr_review(
                     github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
                     pr = github_client.get_pull_request(repo_full_name, pr_number)
                     
-                    # Build changelog-style description from file changes
-                    added_files = []
-                    modified_files = []
-                    removed_files = []
+                    # Import PR description generator
+                    from src.utils.pr_description_generator import PRDescriptionGenerator, FileChange, analyze_diff_with_llm
                     
-                    total_additions = 0
-                    total_deletions = 0
-                    
+                    # Prepare FileChange objects with LLM-powered explanations
+                    files_changed = []
                     for pr_file in pr.files:
-                        if pr_file.status == "added":
-                            added_files.append(f"- `{pr_file.filename}` ({pr_file.additions} lines)")
-                        elif pr_file.status == "modified":
-                            modified_files.append(f"- `{pr_file.filename}` (+{pr_file.additions}, -{pr_file.deletions})")
-                        elif pr_file.status == "removed":
-                            removed_files.append(f"- `{pr_file.filename}`")
+                        file_change = FileChange(
+                            filename=pr_file.filename,
+                            status=pr_file.status,
+                            additions=pr_file.additions,
+                            deletions=pr_file.deletions,
+                            changes=pr_file.additions + pr_file.deletions,
+                        )
                         
-                        total_additions += pr_file.additions
-                        total_deletions += pr_file.deletions
+                        # Get LLM explanation for the diff (if available)
+                        if pr_file.patch and pr_file.status == "modified":
+                            try:
+                                logger.info(f"[PR_DESC] Analyzing diff for {pr_file.filename}...")
+                                explanation = await analyze_diff_with_llm(
+                                    pr_file.filename,
+                                    pr_file.patch,
+                                    llm_client=None  # Will use default client
+                                )
+                                file_change.explanation = explanation
+                                logger.info(f"[PR_DESC] Got explanation: {explanation[:80]}...")
+                            except Exception as e:
+                                logger.warning(f"[PR_DESC] LLM analysis failed for {pr_file.filename}: {e}")
+                                file_change.explanation = f"Modified {pr_file.filename}"
+                        elif pr_file.status == "added":
+                            file_change.explanation = f"New file with {pr_file.additions} lines"
+                        
+                        files_changed.append(file_change)
                     
-                    # Generate changelog-style description
-                    description_parts = []
-                    
-                    if modified_files:
-                        description_parts.append("## 📝 Modified\n")
-                        description_parts.append("\n".join(modified_files))
-                        description_parts.append("")
-                    
-                    if added_files:
-                        description_parts.append("## ✨ Added\n")
-                        description_parts.append("\n".join(added_files))
-                        description_parts.append("")
-                    
-                    if removed_files:
-                        description_parts.append("## 🗑️ Removed\n")
-                        description_parts.append("\n".join(removed_files))
-                        description_parts.append("")
-                    
-                    # Add summary stats
-                    description_parts.append("## 📊 Summary\n")
-                    description_parts.append(f"- **Files changed:** {len(pr.files)}")
-                    description_parts.append(f"- **Additions:** +{total_additions}")
-                    description_parts.append(f"- **Deletions:** -{total_deletions}")
-                    
-                    generated_description = "\n".join(description_parts)
+                    # Generate changelog-style description with LLM explanations
+                    pr_generator = PRDescriptionGenerator()
+                    generated_description = pr_generator.generate_changelog_description(
+                        files_changed=files_changed,
+                        pr_title=pr.title
+                    )
                     
                     logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
                     logger.info(f"Storing description to update after review completes")
