@@ -381,6 +381,7 @@ async def process_pr_review(
     
     logger.info(f"Processing PR review for {repo_full_name}#{pr_number} (action: {action})")
     
+    orchestrator = None
     try:
         # Check rate limit before starting expensive operations
         try:
@@ -513,9 +514,24 @@ async def process_pr_review(
                     result["pr_description"] = {"status": "failed", "error": str(e)}
             
             return result
-            
+        
+        except Exception as e:
+            logger.error(f"Unexpected error in PR review: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "message": f"PR review failed: {str(e)}"
+            }
+        
         finally:
-            orchestrator.cleanup()
+            if orchestrator:
+                orchestrator.cleanup()
+    
+    except Exception as e:
+        logger.error(f"Fatal error in process_pr_review: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": f"Fatal PR review error: {str(e)}"
+        }
 
 
 async def handle_agent_command(
