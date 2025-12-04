@@ -9,6 +9,8 @@ Production-grade multi-agent system for automated code review, bug detection, an
 
 **Live Demo**: Install on your repo and try `/inspectai_review` on any PR!
 
+**Testing PR Descriptions**: Push to a PR and watch the bot post a description comment with file change summaries! 🚀
+
 ---
 
 ## 🏗️ Technical Choices Summary
