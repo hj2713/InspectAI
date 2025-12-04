@@ -49,7 +49,7 @@ async def analyze_diff_with_llm(filename: str, diff: str, llm_client=None) -> st
     
     try:
         # Import here to avoid circular imports
-        from src.llm.client import get_llm_client
+        from src.llm.factory import get_llm_client
         
         if llm_client is None:
             llm_client = get_llm_client()

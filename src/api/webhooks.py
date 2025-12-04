@@ -447,9 +447,7 @@ async def process_pr_review(
         except Exception as e:
             logger.warning(f"Failed to update PR description: {e}")
         
-        # NOTE: NO background analysis - only PR description on automatic webhook
-        # Users can trigger /inspectai_review, /inspectai_bugs, etc. manually for detailed analysis
-        logger.info(f"PR description complete for {repo_full_name}#{pr_number} (analysis available via manual commands)")
+        logger.info(f"PR description complete for {repo_full_name}#{pr_number}")
         
         return {
             "status": "success",
