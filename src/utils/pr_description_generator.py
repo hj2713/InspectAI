@@ -71,9 +71,10 @@ Focus on:
 
 Keep it concise and technical. Don't mention file stats."""
         
-        # Call LLM
-        response = await llm_client.generate(
-            prompt=prompt,
+        # Call LLM using chat method
+        messages = [{"role": "user", "content": prompt}]
+        response = llm_client.chat(
+            messages=messages,
             max_tokens=200,
             temperature=0.3
         )
