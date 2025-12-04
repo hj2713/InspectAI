@@ -381,156 +381,106 @@ async def process_pr_review(
     
     logger.info(f"Processing PR review for {repo_full_name}#{pr_number} (action: {action})")
     
-    orchestrator = None
+    # Only process on PR open/push/reopen
+    if action not in ["opened", "synchronize", "reopened"]:
+        return {
+            "status": "ignored",
+            "message": "PR action does not trigger review"
+        }
+    
     try:
-        # Check rate limit before starting expensive operations
-        try:
-            github_check = GitHubClient.from_installation(installation_id) if installation_id else GitHubClient()
-            rate_status = github_check.get_rate_limit_status()
-            remaining = rate_status.get('remaining', 0)
+        # Get PR details and files
+        github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
+        pr = github_client.get_pull_request(repo_full_name, pr_number)
+        
+        # Generate PR description with LLM explanations
+        logger.info(f"Generating PR description for {repo_full_name}#{pr_number}")
+        from src.utils.pr_description_generator import PRDescriptionGenerator, FileChange, analyze_diff_with_llm
+        
+        # Prepare FileChange objects with LLM-powered explanations
+        files_changed = []
+        for pr_file in pr.files:
+            file_change = FileChange(
+                filename=pr_file.filename,
+                status=pr_file.status,
+                additions=pr_file.additions,
+                deletions=pr_file.deletions,
+                changes=pr_file.additions + pr_file.deletions,
+            )
             
-            if remaining < 50:  # Need at least 50 API calls for a PR review
-                reset_time = rate_status.get('reset', 0)
-                wait_until = datetime.fromtimestamp(reset_time).strftime('%H:%M:%S') if reset_time else 'unknown'
-                logger.warning(
-                    f"GitHub API rate limit too low ({remaining} remaining). "
-                    f"Skipping PR review for {repo_full_name}#{pr_number}. "
-                    f"Rate limit resets at {wait_until}"
-                )
-                return {
-                    "status": "rate_limited",
-                    "message": f"GitHub API rate limit too low ({remaining} remaining). Will retry after reset.",
-                    "reset_at": reset_time
-                }
+            # Get LLM explanation for the diff (if available)
+            if pr_file.patch and pr_file.status == "modified":
+                try:
+                    logger.info(f"[PR_DESC] Analyzing diff for {pr_file.filename}...")
+                    explanation = await analyze_diff_with_llm(
+                        pr_file.filename,
+                        pr_file.patch,
+                        llm_client=None  # Will use default client
+                    )
+                    file_change.explanation = explanation
+                    logger.info(f"[PR_DESC] Got explanation: {explanation[:80]}...")
+                except Exception as e:
+                    logger.warning(f"[PR_DESC] LLM analysis failed for {pr_file.filename}: {e}")
+                    file_change.explanation = f"Modified {pr_file.filename}"
+            elif pr_file.status == "added":
+                file_change.explanation = f"New file with {pr_file.additions} lines"
+            
+            files_changed.append(file_change)
+        
+        # Generate changelog-style description with LLM explanations
+        pr_generator = PRDescriptionGenerator()
+        generated_description = pr_generator.generate_changelog_description(
+            files_changed=files_changed,
+            pr_title=pr.title
+        )
+        
+        logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
+        
+        # Update PR description immediately
+        try:
+            github_client.update_pr_body(
+                repo_full_name,
+                pr_number,
+                generated_description
+            )
+            logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
         except Exception as e:
-            logger.warning(f"Could not check rate limit: {e}. Proceeding anyway...")
+            logger.warning(f"Failed to update PR description: {e}")
         
-        # Initialize orchestrator
-        config = copy.deepcopy(ORCHESTRATOR_CONFIG)
-        from config.default_config import DEFAULT_PROVIDER, GEMINI_MODEL, BYTEZ_MODEL, OPENAI_MODEL
-        provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER)
+        # Run full analysis (bugs, security, tests, refactoring) but suppress all PR comments
+        logger.info(f"Running background analysis for {repo_full_name}#{pr_number} (NO comments will be posted)")
+        try:
+            from src.orchestrator.orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            if orchestrator:
+                # Run analysis via PR review handler with post_comments=False (silent mode)
+                task = {
+                    "type": "pr_review",
+                    "input": {
+                        "repo_url": repo_full_name,
+                        "pr_number": pr_number,
+                        "post_comments": False  # Key: suppress all comments
+                    }
+                }
+                analysis_result = orchestrator.process_task(task)
+                logger.info(f"Background analysis completed for {repo_full_name}#{pr_number}")
+                logger.debug(f"Analysis result: {analysis_result.get('status')}")
+            else:
+                logger.warning("Could not get orchestrator instance")
+        except Exception as e:
+            logger.warning(f"Background analysis failed (non-critical): {e}", exc_info=True)
         
-        # Set model based on provider
-        model_map = {
-            "gemini": GEMINI_MODEL,
-            "bytez": BYTEZ_MODEL,
-            "openai": OPENAI_MODEL
+        return {
+            "status": "success",
+            "message": "PR description generated (analysis running in background)",
+            "pr_number": pr_number
         }
         
-        for key in config:
-            if isinstance(config[key], dict):
-                config[key]["provider"] = provider
-                config[key]["model"] = model_map.get(provider, GEMINI_MODEL)
-        
-        orchestrator = OrchestratorAgent(config)
-        
-        try:
-            # Run PR review
-            task = {
-                "type": "pr_review",
-                "input": {
-                    "repo_url": repo_full_name,
-                    "pr_number": pr_number,
-                    "post_comments": True  # Auto-post review comments
-                }
-            }
-            
-            result = orchestrator.process_task(task)
-            logger.info(f"PR review completed for {repo_full_name}#{pr_number}")
-            
-            # Generate PR description on PR open, when commits are pushed, or when PR is reopened
-            if action in ["opened", "synchronize", "reopened"]:
-                try:
-                    logger.info(f"Generating PR description for {repo_full_name}#{pr_number}")
-                    
-                    # Get PR files and changes
-                    # Use personal access token for PR description updates (not GitHub App token)
-                    github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
-                    pr = github_client.get_pull_request(repo_full_name, pr_number)
-                    
-                    # Import PR description generator
-                    from src.utils.pr_description_generator import PRDescriptionGenerator, FileChange, analyze_diff_with_llm
-                    
-                    # Prepare FileChange objects with LLM-powered explanations
-                    files_changed = []
-                    for pr_file in pr.files:
-                        file_change = FileChange(
-                            filename=pr_file.filename,
-                            status=pr_file.status,
-                            additions=pr_file.additions,
-                            deletions=pr_file.deletions,
-                            changes=pr_file.additions + pr_file.deletions,
-                        )
-                        
-                        # Get LLM explanation for the diff (if available)
-                        if pr_file.patch and pr_file.status == "modified":
-                            try:
-                                logger.info(f"[PR_DESC] Analyzing diff for {pr_file.filename}...")
-                                explanation = await analyze_diff_with_llm(
-                                    pr_file.filename,
-                                    pr_file.patch,
-                                    llm_client=None  # Will use default client
-                                )
-                                file_change.explanation = explanation
-                                logger.info(f"[PR_DESC] Got explanation: {explanation[:80]}...")
-                            except Exception as e:
-                                logger.warning(f"[PR_DESC] LLM analysis failed for {pr_file.filename}: {e}")
-                                file_change.explanation = f"Modified {pr_file.filename}"
-                        elif pr_file.status == "added":
-                            file_change.explanation = f"New file with {pr_file.additions} lines"
-                        
-                        files_changed.append(file_change)
-                    
-                    # Generate changelog-style description with LLM explanations
-                    pr_generator = PRDescriptionGenerator()
-                    generated_description = pr_generator.generate_changelog_description(
-                        files_changed=files_changed,
-                        pr_title=pr.title
-                    )
-                    
-                    logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
-                    logger.info(f"Storing description to update after review completes")
-                    
-                    # Store description in result dict to update AFTER review completes
-                    result["_pending_pr_description"] = generated_description
-                    
-                except Exception as e:
-                    logger.warning(f"Error preparing PR description: {e}", exc_info=True)
-            
-            # NOW update the PR description AFTER review is complete
-            if "_pending_pr_description" in result:
-                try:
-                    github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
-                    github_client.update_pr_body(
-                        repo_full_name,
-                        pr_number,
-                        result["_pending_pr_description"]
-                    )
-                    logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
-                    result["pr_description"] = {"status": "updated"}
-                    del result["_pending_pr_description"]
-                except Exception as e:
-                    logger.warning(f"Failed to update PR description: {e}")
-                    result["pr_description"] = {"status": "failed", "error": str(e)}
-            
-            return result
-        
-        except Exception as e:
-            logger.error(f"Unexpected error in PR review: {e}", exc_info=True)
-            return {
-                "status": "error",
-                "message": f"PR review failed: {str(e)}"
-            }
-        
-        finally:
-            if orchestrator:
-                orchestrator.cleanup()
-    
     except Exception as e:
-        logger.error(f"Fatal error in process_pr_review: {e}", exc_info=True)
+        logger.error(f"Error processing PR review: {e}", exc_info=True)
         return {
             "status": "error",
-            "message": f"Fatal PR review error: {str(e)}"
+            "message": f"PR review processing failed: {str(e)}"
         }
 
 
