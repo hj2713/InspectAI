@@ -447,32 +447,13 @@ async def process_pr_review(
         except Exception as e:
             logger.warning(f"Failed to update PR description: {e}")
         
-        # Run full analysis (bugs, security, tests, refactoring) but suppress all PR comments
-        logger.info(f"Running background analysis for {repo_full_name}#{pr_number} (NO comments will be posted)")
-        try:
-            from src.orchestrator.orchestrator import get_orchestrator
-            orchestrator = get_orchestrator()
-            if orchestrator:
-                # Run analysis via PR review handler with post_comments=False (silent mode)
-                task = {
-                    "type": "pr_review",
-                    "input": {
-                        "repo_url": repo_full_name,
-                        "pr_number": pr_number,
-                        "post_comments": False  # Key: suppress all comments
-                    }
-                }
-                analysis_result = orchestrator.process_task(task)
-                logger.info(f"Background analysis completed for {repo_full_name}#{pr_number}")
-                logger.debug(f"Analysis result: {analysis_result.get('status')}")
-            else:
-                logger.warning("Could not get orchestrator instance")
-        except Exception as e:
-            logger.warning(f"Background analysis failed (non-critical): {e}", exc_info=True)
+        # NOTE: NO background analysis - only PR description on automatic webhook
+        # Users can trigger /inspectai_review, /inspectai_bugs, etc. manually for detailed analysis
+        logger.info(f"PR description complete for {repo_full_name}#{pr_number} (analysis available via manual commands)")
         
         return {
             "status": "success",
-            "message": "PR description generated (analysis running in background)",
+            "message": "PR description generated successfully",
             "pr_number": pr_number
         }
         
