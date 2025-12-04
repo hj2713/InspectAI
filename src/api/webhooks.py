@@ -447,67 +447,73 @@ async def process_pr_review(
                     github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
                     pr = github_client.get_pull_request(repo_full_name, pr_number)
                     
-                    # Build code changes data for PR description generator
-                    code_changes = []
+                    # Build changelog-style description from file changes
+                    added_files = []
+                    modified_files = []
+                    removed_files = []
+                    
+                    total_additions = 0
+                    total_deletions = 0
+                    
                     for pr_file in pr.files:
-                        code_changes.append({
-                            "filename": pr_file.filename,
-                            "status": pr_file.status,
-                            "additions": pr_file.additions,
-                            "deletions": pr_file.deletions
-                        })
+                        if pr_file.status == "added":
+                            added_files.append(f"- `{pr_file.filename}` ({pr_file.additions} lines)")
+                        elif pr_file.status == "modified":
+                            modified_files.append(f"- `{pr_file.filename}` (+{pr_file.additions}, -{pr_file.deletions})")
+                        elif pr_file.status == "removed":
+                            removed_files.append(f"- `{pr_file.filename}`")
+                        
+                        total_additions += pr_file.additions
+                        total_deletions += pr_file.deletions
                     
-                    # Extract bugs and analysis from the review result
-                    bugs_data = result.get("bug_detection", {}) if isinstance(result, dict) else {}
-                    analysis_data = result.get("analysis", {}) if isinstance(result, dict) else {}
+                    # Generate changelog-style description
+                    description_parts = []
                     
-                    # Prepare input for PR description generator
-                    description_input = {
-                        "code_changes": code_changes,
-                        "bugs": {
-                            "bug_count": bugs_data.get("bug_count", 0) if isinstance(bugs_data, dict) else 0,
-                            "bugs": bugs_data.get("bugs", []) if isinstance(bugs_data, dict) else []
-                        },
-                        "security": result.get("security", {}) if isinstance(result, dict) else {},
-                        "analysis": {
-                            "suggestions": analysis_data.get("suggestions", []) if isinstance(analysis_data, dict) else []
+                    if modified_files:
+                        description_parts.append("## 📝 Modified\n")
+                        description_parts.append("\n".join(modified_files))
+                        description_parts.append("")
+                    
+                    if added_files:
+                        description_parts.append("## ✨ Added\n")
+                        description_parts.append("\n".join(added_files))
+                        description_parts.append("")
+                    
+                    if removed_files:
+                        description_parts.append("## 🗑️ Removed\n")
+                        description_parts.append("\n".join(removed_files))
+                        description_parts.append("")
+                    
+                    # Add summary stats
+                    description_parts.append("## 📊 Summary\n")
+                    description_parts.append(f"- **Files changed:** {len(pr.files)}")
+                    description_parts.append(f"- **Additions:** +{total_additions}")
+                    description_parts.append(f"- **Deletions:** -{total_deletions}")
+                    
+                    generated_description = "\n".join(description_parts)
+                    
+                    logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
+                    
+                    # Update PR description on GitHub
+                    try:
+                        github_client.update_pr_body(
+                            repo_full_name,
+                            pr_number,
+                            generated_description
+                        )
+                        logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
+                        result["pr_description"] = {
+                            "status": "updated",
+                            "files_changed": len(pr.files),
+                            "additions": total_additions,
+                            "deletions": total_deletions
                         }
-                    }
-                    
-                    # Generate description
-                    pr_description_result = orchestrator.agents["pr_description"].process(description_input)
-                    
-                    if pr_description_result.get("status") == "success":
-                        generated_title = pr_description_result.get("title", "")
-                        generated_description = pr_description_result.get("description", "")
-                        pr_type = pr_description_result.get("pr_type", "general")
-                        
-                        logger.info(f"Generated PR description: {pr_type}")
-                        logger.info(f"Generated title: {generated_title}")
-                        
-                        # Update PR description on GitHub
-                        try:
-                            github_client.update_pr_body(
-                                repo_full_name,
-                                pr_number,
-                                generated_description
-                            )
-                            logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
-                            result["pr_description"] = {
-                                "status": "updated",
-                                "title": generated_title,
-                                "type": pr_type
-                            }
-                        except Exception as e:
-                            logger.warning(f"Failed to update PR description: {e}")
-                            result["pr_description"] = {
-                                "status": "generated_not_posted",
-                                "title": generated_title,
-                                "type": pr_type,
-                                "error": str(e)
-                            }
-                    else:
-                        logger.warning(f"Failed to generate PR description: {pr_description_result.get('error')}")
+                    except Exception as e:
+                        logger.warning(f"Failed to update PR description: {e}")
+                        result["pr_description"] = {
+                            "status": "generated_not_posted",
+                            "error": str(e)
+                        }
                         
                 except Exception as e:
                     logger.warning(f"Error generating PR description: {e}", exc_info=True)
