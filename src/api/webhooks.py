@@ -493,39 +493,34 @@ async def process_pr_review(
                     generated_description = "\n".join(description_parts)
                     
                     logger.info(f"Generated PR description for {repo_full_name}#{pr_number}")
+                    logger.info(f"Storing description to update after review completes")
                     
-                    # Update PR description on GitHub
-                    try:
-                        github_client.update_pr_body(
-                            repo_full_name,
-                            pr_number,
-                            generated_description
-                        )
-                        logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
-                        result["pr_description"] = {
-                            "status": "updated",
-                            "files_changed": len(pr.files),
-                            "additions": total_additions,
-                            "deletions": total_deletions
-                        }
-                    except Exception as e:
-                        logger.warning(f"Failed to update PR description: {e}")
-                        result["pr_description"] = {
-                            "status": "generated_not_posted",
-                            "error": str(e)
-                        }
-                        
+                    # Store description in result dict to update AFTER review completes
+                    result["_pending_pr_description"] = generated_description
+                    
                 except Exception as e:
-                    logger.warning(f"Error generating PR description: {e}", exc_info=True)
+                    logger.warning(f"Error preparing PR description: {e}", exc_info=True)
+            
+            # NOW update the PR description AFTER review is complete
+            if "_pending_pr_description" in result:
+                try:
+                    github_client = GitHubClient(token=os.getenv("GITHUB_TOKEN"))
+                    github_client.update_pr_body(
+                        repo_full_name,
+                        pr_number,
+                        result["_pending_pr_description"]
+                    )
+                    logger.info(f"Updated PR description for {repo_full_name}#{pr_number}")
+                    result["pr_description"] = {"status": "updated"}
+                    del result["_pending_pr_description"]
+                except Exception as e:
+                    logger.warning(f"Failed to update PR description: {e}")
+                    result["pr_description"] = {"status": "failed", "error": str(e)}
             
             return result
             
         finally:
             orchestrator.cleanup()
-            
-    except Exception as e:
-        logger.error(f"PR review failed for {repo_full_name}#{pr_number}: {e}", exc_info=True)
-        return {"status": "error", "error": str(e)}
 
 
 async def handle_agent_command(
