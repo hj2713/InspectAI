@@ -397,20 +397,9 @@ async def process_pr_review(
         logger.info(f"Generating PR description for {repo_full_name}#{pr_number}")
         from src.utils.pr_description_generator import PRDescriptionGenerator, FileChange, analyze_diff_with_llm
         
-        # For 'synchronize' action (new push), filter to show only recent changes
-        # For 'opened' and 'reopened', show all files (since it's the first push or reopening)
-        files_to_analyze = pr.files
-        if action == "synchronize":
-            # On synchronize, we only want to show files that are likely new changes
-            # Since GitHub API doesn't distinguish commits, we show all modified files
-            # but the diff itself will be relative to the base branch
-            # This means each push shows what changed since the PR base, which is what we want
-            logger.info(f"[PR_DESC] Analyzing changes for new push to {repo_full_name}#{pr_number}")
-            files_to_analyze = [f for f in pr.files if f.status in ["added", "modified", "renamed"]]
-        
         # Prepare FileChange objects with LLM-powered explanations
         files_changed = []
-        for pr_file in files_to_analyze:
+        for pr_file in pr.files:
             file_change = FileChange(
                 filename=pr_file.filename,
                 status=pr_file.status,
@@ -435,19 +424,8 @@ async def process_pr_review(
                     file_change.explanation = f"Modified {pr_file.filename}"
             elif pr_file.status == "added":
                 file_change.explanation = f"New file with {pr_file.additions} lines"
-            elif pr_file.status == "renamed":
-                file_change.explanation = f"File renamed to {pr_file.filename}"
             
             files_changed.append(file_change)
-        
-        # Only generate description if there are actual changes
-        if not files_changed:
-            logger.info(f"[PR_DESC] No changes to describe for {repo_full_name}#{pr_number}")
-            return {
-                "status": "success",
-                "message": "No changes to describe",
-                "pr_number": pr_number
-            }
         
         # Generate changelog-style description with LLM explanations
         pr_generator = PRDescriptionGenerator()
