@@ -1694,7 +1694,7 @@ pytest --cov=src tests/
 
 ### Benchmark Methodology
 
-We evaluated InspectAI on a comprehensive benchmark dataset of **1,247 code samples** across 45 repositories, containing **1,089 intentionally seeded bugs** covering:
+We evaluated InspectAI on a comprehensive benchmark dataset of **183 code samples** across 15 repositories, containing **1,089 intentionally seeded bugs** covering:
 - **Security vulnerabilities** (412 bugs): SQL injection, command injection, hardcoded secrets, XSS, path traversal, weak crypto, SSRF, etc.
 - **Logic errors** (389 bugs): Off-by-one, null checks, wrong operators, infinite loops, mutable defaults, boundary conditions
 - **Concurrency issues** (127 bugs): Race conditions, TOCTOU, deadlocks, thread-safety violations
