@@ -904,11 +904,26 @@ class GitHubClient:
         owner, repo = self._parse_repo_url(repo_url)
         
         logger.info(f"Updating PR description for {owner}/{repo}#{pr_number}")
+        logger.debug(f"Using token: {self.token[:20] if self.token else 'None'}...")
         
-        return self._api_put(
-            f"repos/{owner}/{repo}/pulls/{pr_number}",
-            {"body": body}
-        )
+        # Use PATCH for updating PR body
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
+        logger.debug(f"PATCH URL: {url}")
+        
+        try:
+            response = self.session.patch(url, json={"body": body}, timeout=30)
+            logger.debug(f"Response status: {response.status_code}")
+            logger.debug(f"Response headers: {dict(response.headers)}")
+            response.raise_for_status()
+            logger.info(f"Successfully updated PR description")
+            return response.json()
+        except Exception as e:
+            logger.error(f"Failed to update PR: {e}")
+            if 'response' in locals():
+                logger.error(f"Response status: {response.status_code}")
+                logger.error(f"Response text: {response.text}")
+                logger.error(f"Response headers: {dict(response.headers)}")
+            raise
     
     def cleanup(self) -> None:
         """Clean up temporary directories."""
