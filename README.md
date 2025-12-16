@@ -40,7 +40,7 @@ Production-grade multi-agent system for automated code review, bug detection, an
 - [Feedback Learning System](#-feedback-learning-system)
 - [Technical Deep Dive](#-technical-deep-dive)
 - [Issues We Faced & Solutions](#-issues-we-faced--solutions)
-- [Setup & Installation](#-setup--installation)
+- [Setup & Installation](#setup--installation)
 - [Configuration](#-configuration)
 - [Deployment](#-deployment)
 - [Testing](#-testing)
