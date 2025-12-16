@@ -1470,8 +1470,13 @@ def call_llm(prompt: str) -> str:
 
 ## ⚙️ Setup & Installation
 
+
 <details>
 <summary><b>Click to expand Setup & Installation</b></summary>
+
+> **Note:** InspectAI is live and ready to use—no manual installation required! You can simply [install the InspectAI GitHub App](https://github.com/apps/comse6998-inspectai) directly into your GitHub project and start using it immediately.
+
+If you wish to replicate or self-host the project, follow the steps below:
 
 ### Prerequisites
 
