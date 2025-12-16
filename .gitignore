@@ -74,3 +74,6 @@ gcp_something.json
 
 # Project specific
 LLM-Project-Proposal (1).pdf
+*.pdf
+*.docx
+
